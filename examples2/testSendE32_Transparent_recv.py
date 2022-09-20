@@ -8,7 +8,7 @@
 import time
 
 from LoRaE32_win import ebyteE32_win as ebyteE32
-e32 = ebyteE32(Port='COM17', Baudrate=115200, AirDataRate='19.2k', Address=0x0001, Channel=0x02, debug=True)
+e32 = ebyteE32(Port='COM17', Baudrate=115200, AirDataRate='19.2k', Address=0x0001, Channel=0x02, debug=False)
 
 # from LoRaE32_ESP32 import ebyteE32_ESP32 as ebyteE32
 # M0pin = 18
@@ -50,7 +50,7 @@ try:
             teller += 1
             t1 = t2
             
-            time.sleep(0.05)
+            #time.sleep(0.05)
             
 #         message = e32.recvMessage(from_address, from_channel, useChecksum=False)
 #         if message:

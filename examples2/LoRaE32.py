@@ -65,7 +65,7 @@ import json
 class ebyteE32:
     ''' class to interface an ESP32 via serial commands to the EBYTE E32 Series LoRa modules '''
 
-    PACKET_SIZE = 512 # 58 ok # 512
+    PACKET_SIZE = 58 ## 58-ok # 512-ok
     
     # UART parity strings
     PARSTR = { '8N1':'00', '8O1':'01', '8E1':'10' }
@@ -228,17 +228,19 @@ class ebyteE32:
         
         sended = 0
         while sended < len(msg):
-            # wait for idle module
-            self.flush()
-            time.sleep(0.050) # 5ms
-            self.waitForDeviceIdle()
-            time.sleep(0.050) # 5ms
-            # send the message
-            #print(sended, msg[sended:sended + self.PACKET_SIZE])
-            # n = self.serdev.write(bytes(msg[sended:sended + self.PACKET_SIZE]))
-            n = self.serdev.write(msg[sended:sended + self.PACKET_SIZE])
-            if n > 0:
-                sended += n
+            if self.getAUX():
+                # wait for idle module
+                self.flush()
+                time.sleep(0.050) # 5ms
+                self.waitForDeviceIdle()
+                time.sleep(0.050) # 5ms
+                # send the message
+                #print(sended, msg[sended:sended + self.PACKET_SIZE])
+                # n = self.serdev.write(bytes(msg[sended:sended + self.PACKET_SIZE]))
+                n = self.serdev.write(msg[sended:sended + self.PACKET_SIZE])
+                if n > 0:
+                    sended += n
+                self.flush()
 #                 if self.getAUX():
 #                     sended += n
             #print(sended, n, msg[sended])
@@ -250,6 +252,8 @@ class ebyteE32:
 #             if n > 0:
 #                 self.serdev.write(b' ' * n)
 
+        self.waitForDeviceIdle()
+        time.sleep(0.050) # 5ms
         self.flush()
         time.sleep(0.050) # 5ms
         self.waitForDeviceIdle()

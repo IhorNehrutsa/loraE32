@@ -38,7 +38,7 @@ while True:
             end = msg.find('END<')
             if (start >= 0) and (end > 0) and (start < end):
                 Message = msg[start:end+4]
-                print(len(Message))
+                print(len(Message), False if len(Message) != 2030 else '')
                 print(Message)
                 msg = msg[end+4:]
                 #print(2, len(msg), msg)
