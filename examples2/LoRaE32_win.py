@@ -36,8 +36,8 @@ class ebyteE32_win(ebyteE32):
     
     def getAUX(self):
         #print('AUX', not self.serdev.dsr)
-        #return not self.serdev.dsr
-        return not self.serdev.ri
+        return not self.serdev.dsr
+        #return not self.serdev.ri
     
     
     def is_any(self):

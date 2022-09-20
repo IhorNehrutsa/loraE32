@@ -240,7 +240,7 @@ class ebyteE32:
                 n = self.serdev.write(msg[sended:sended + self.PACKET_SIZE])
                 if n > 0:
                     sended += n
-                self.flush()
+                    self.flush()
 #                 if self.getAUX():
 #                     sended += n
             #print(sended, n, msg[sended])
@@ -252,13 +252,13 @@ class ebyteE32:
 #             if n > 0:
 #                 self.serdev.write(b' ' * n)
 
-        self.waitForDeviceIdle()
-        time.sleep(0.050) # 5ms
-        self.flush()
-        time.sleep(0.050) # 5ms
-        self.waitForDeviceIdle()
-        time.sleep(0.050) # 5ms
-        return 'OK sendMessage'
+#         self.waitForDeviceIdle()
+#         time.sleep(0.050) # 5ms
+#         self.flush()
+#         time.sleep(0.050) # 5ms
+#         self.waitForDeviceIdle()
+#         time.sleep(0.050) # 5ms
+#         return 'OK sendMessage'
         
         
     def recvMessage(self, from_address, from_channel, useChecksum=False):

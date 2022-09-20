@@ -37,12 +37,12 @@ try:
         if e32.getAUX():
             t2 = time.time()
             #message = { 'msg': 'HELLO WORLD %s - %s - %f\n'%(str(teller), time.ctime(), t2-t1) }
-            #message = '>START '+ 'HELLO %5d - %s - %f '%(teller, time.ctime(), t2-t1) + '1234567890'*200 + '<END\n'
-            message = '>START    '+ '%9d '%(teller) + '1234567890'*(200) # 48
+            message = '>START    ' + '%9d - %7.4f '%(teller, t2-t1) + '1234567890' * 200
+            #message = '>START    ' + '%9d '%(teller) + '1234567890'*200 # 48
             
-            n = e32.PACKET_SIZE - len(message) % e32.PACKET_SIZE - 10 - 1
-            if n > 0:
-                message += '-' * n
+#             n = e32.PACKET_SIZE - len(message) % e32.PACKET_SIZE - 10 - 1
+#             if n > 0:
+#                 message += '-' * n
 
             message += '      END<\n'
             e32.sendMessage(to_address, to_channel, message, useChecksum=False)
