@@ -65,7 +65,7 @@ import json
 class ebyteE32:
     ''' class to interface an ESP32 via serial commands to the EBYTE E32 Series LoRa modules '''
 
-    PACKET_SIZE = 58 ## 58-ok # 512-ok
+    PACKET_SIZE = 58 ## 58-ok ## 512-ok
     
     # UART parity strings
     PARSTR = { '8N1':'00', '8O1':'01', '8E1':'10' }
@@ -128,7 +128,7 @@ class ebyteE32:
         self.config['iomode'] = 1                  # IO mode (default 1 = not floating)
         self.config['wutime'] = 0                  # wakeup time from sleep mode (default 0 = 250ms)
         self.config['fec'] = 1                     # forward error correction (default 1 = on)
-        self.config['txpower'] = '00'              # transmission power (default 0 = 20dBm/100mW)
+        self.config['txpower'] = '11'              # transmission power (default 0 = 20dBm/100mW)
         # 
         self.serdev = None                         # instance for UART
         self.debug = debug
@@ -202,7 +202,7 @@ class ebyteE32:
         # encode message
         msg = b''
         if self.config['transmode'] == 1:     # only for fixed transmission mode
-            1/0
+           # 1/0
 #             msg.append(to_address//256)          # high address byte
 #             msg.append(to_address%256)           # low address byte
 #             msg.append(to_channel)               # channel
@@ -236,7 +236,6 @@ class ebyteE32:
                 time.sleep(0.050) # 5ms
                 # send the message
                 #print(sended, msg[sended:sended + self.PACKET_SIZE])
-                # n = self.serdev.write(bytes(msg[sended:sended + self.PACKET_SIZE]))
                 n = self.serdev.write(msg[sended:sended + self.PACKET_SIZE])
                 if n > 0:
                     sended += n
