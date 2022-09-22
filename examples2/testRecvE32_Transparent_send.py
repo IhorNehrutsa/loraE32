@@ -19,6 +19,10 @@ e32.setConfig('setConfigPwrDwnSave')
 from_address = 0x0001
 from_channel = 0x02
 
+to_address = 0x0001
+to_channel = 0x02
+
+
 e32.configMessage(from_address, from_channel)
 e32.getVersion()
 e32.getConfig()
@@ -50,6 +54,10 @@ while True:
                 msg = msg[end+4:]
                 #print(2, len(msg), msg)
 
+                if len(Message) == MSG_LEN:
+                    e32.sendMessage(to_address, to_channel, message, useChecksum=False)
+                    print('Sending - address %s - channel %d - len %d - message \n%s'%(to_address, to_channel, len(message), message), end='')
+                    
         #time.sleep(2.000)
 
 e32.stop()
