@@ -6,10 +6,12 @@
 # receiver(s) - address 0001 - channel 02
 ###########################################
 
+MSG_LEN = 1550
+
 from LoRaE32_win import ebyteE32_win as ebyteE32
 import time
 
-e32 = ebyteE32(Port='COM3', Baudrate=115200, AirDataRate='19.2k', Address=0x0001, Channel=0x02, debug=False)
+e32 = ebyteE32(Port='COM4', Baudrate=115200, AirDataRate='9.6k', Address=0x0001, Channel=0x02, debug=False)
 
 e32.reset()
 
@@ -29,35 +31,42 @@ e32.getConfig()
 e32.configMessage(from_address, from_channel)
 print()
 
-MSG_LEN = 1260
-
 err = 0
-msg = ''
-while True:
-    message = e32.recvMessage(from_address, from_channel, useChecksum=False)
-    if message:
-#         print('Receiving transparent : address %d - channel %d'%(from_address, from_channel), end='')
-#         print(' - message %s'%(message))
-        if 0:
-            print(message, end='')
-            #print('' , len(message), message, end='')
-        else:
-            msg +=message
-            start = msg.find('>START')
-            end = msg.rfind('END<')
-            if (start >= 0) and (end > 0) and (start < end):
-                Message = msg[start:end+4]
-                if len(Message) != MSG_LEN:
-                    err += 1
-                print(len(Message), err, False if len(Message) != MSG_LEN else '')
-                print(Message)
-                msg = msg[end+4:]
-                #print(2, len(msg), msg)
+message_flow = b''
+try:
+    while True:
+        #msg = e32.recvMessage(from_address, from_channel, useChecksum=False)
+        msg = e32.receive_message_wait1()
+        #msg = e32.receive_message1()
+        #msg = e32.receive_message2()
+        if msg:
+            if 0:
+                msg = str(msg, 'UTF-8')
+                print(msg)
+                #print(msg, end='')
+                #print('' , len(msg), msg, end='')
+            else:
+                #print(msg)
+                #print(message_flow)
+                message_flow +=msg
+                start = message_flow.find(b'>START')
+                end = message_flow.rfind(b'END<')
+                if (start >= 0) and (end > 0) and (start < end):
+                    message = message_flow[start:end+4]
+                    message = str(message, 'UTF-8')
+                    if len(message) != MSG_LEN:
+                        err += 1
+                    print()
+                    print('Received - address %s - channel %d - len %d - err %d'% (from_address, from_channel, len(message), err), False if len(message) != MSG_LEN else '')
+                    print(message)
+                    message_flow = message_flow[end+4+1:]
+                    #print(len(message_flow), message_flow)
 
-                if len(Message) == MSG_LEN:
-                    e32.sendMessage(to_address, to_channel, message, useChecksum=False)
-                    print('Sending - address %s - channel %d - len %d - message \n%s'%(to_address, to_channel, len(message), message), end='')
-                    
-        #time.sleep(2.000)
+                    if len(message) == MSG_LEN:
+                        print('Sending  - address %s - channel %d - len %d\n%s'%(to_address, to_channel, len(message), message))
+                        e32.sendMessage(to_address, to_channel, message, useChecksum=False)
+                        print('Sended.')
+                        message = ''
 
-e32.stop()
+finally:
+    e32.stop()

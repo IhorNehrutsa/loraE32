@@ -45,9 +45,7 @@ class ebyteE32_win(ebyteE32):
 
 
     def read(self)->bytes:
-        #return self.serdev.read()
-        return self.serdev.read_all()
-        #return self.serdev.read(self.serdev.in_waiting)
+        return self.serdev.read_all() # serdev.read_all() is serdev.read(serdev.in_waiting)
         
 
     def flush(self):

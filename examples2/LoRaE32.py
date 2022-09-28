@@ -1,4 +1,34 @@
 #######################################################################
+# LoRa        58bytes recv            CP2102 
+# TX -------            ------------- RX
+#           ||||||||||||
+# AUX ---                 ----------- DSR
+#        |_______________|
+#       t1  t2        t3 t4
+#
+#        t1-t2    t1-t4    t3-t4   t2-t3 
+#        5.7ms   532.0ms    1.6ms              1200 -  0.3k
+#                                   16ms      38400 -  0.3k
+#        6.0ms    68.0ms    0.3ms   62ms       9600 -  2.4k
+#        5.4ms    11.4ms    1.0ms  5.8ms     115200 - 19.2k
+#
+#######################################################################
+# LoRa   512bytes send                CP2102 
+# RX --                 ------------- TX
+#      |||||||||||||||||
+# AUX ---                         --- DSR
+#        |_______________________|
+#    t1  t2           t3         t4
+#
+#        t1-t2   t1-t3   t2-t4  t3-t4
+#        5.7ms                  1.6ms     1200 -  0.3k
+#        6.0ms                  0.3ms     9600 -  2.4k
+#         ms    540ms    600ms  ms        9600 - 19.2k
+#               268ms    568ms           19200 - 19.2k
+#        0.8ms   88ms    548ms  ms       57600 - 19.2k
+#            ms  48ms    540ms  ms      115200 - 19.2k
+#
+#######################################################################
 # MicroPython class for EBYTE E32 Series LoRa modules which are based
 # on SEMTECH SX1276/SX1278 chipsets and are available for 170, 433, 470,
 # 868 and 915MHz frequencies in 100mW and 1W transmitting power versions.
@@ -65,7 +95,7 @@ import json
 class ebyteE32:
     ''' class to interface an ESP32 via serial commands to the EBYTE E32 Series LoRa modules '''
 
-    PACKET_SIZE = 58 ## 58-ok ## 512-ok
+    PACKET_SIZE = 512 # 58 # 
     
     # UART parity strings
     PARSTR = { '8N1':'00', '8O1':'01', '8E1':'10' }
@@ -201,12 +231,14 @@ class ebyteE32:
             return 'NOK sendMessage'
         # encode message
         msg = b''
+        to_address_channel = b''
+        to_address_channel_len = 0
         if self.config['transmode'] == 1:     # only for fixed transmission mode
-           # 1/0
 #             msg.append(to_address//256)          # high address byte
 #             msg.append(to_address%256)           # low address byte
 #             msg.append(to_channel)               # channel
-            msg = bytes([to_address//256, to_address%256, to_channel])
+            to_address_channel = bytes([to_address//256, to_address%256, to_channel])
+            to_address_channel_len = 3
         if type(payload) == dict:
             js_payload = json.dumps(payload)     # convert payload to JSON string
         else:
@@ -219,29 +251,43 @@ class ebyteE32:
         msg += js_payload.encode('UTF-8')
         
         if useChecksum:                       # attach 2's complement checksum
-            msg.append(int(self.calcChecksum(js_payload), 16))
+            msg += int(self.calcChecksum(js_payload), 16).to_bytes(1,'big')
+            
         # debug
         if self.debug:
             print('msg', msg)
         
-        #print('msg', msg)
-        
         sended = 0
+        while 0:#sended < len(msg):
+            if self.getAUX():
+                #self.waitForDeviceIdle()
+                #time.sleep(0.050) # 5ms
+                while not self.getAUX():
+                    pass
+                time.sleep(0.050) # 5ms
+                n = self.serdev.write(to_address_channel + msg[sended:sended + self.PACKET_SIZE - to_address_channel_len])
+                if n > 0:
+                    #print(n)
+                    self.flush()
+                    time.sleep(0.050) # 5ms
+                    sended += n - to_address_channel_len
+#                     while not self.getAUX():
+#                         pass
+                
         while sended < len(msg):
             if self.getAUX():
+            #if self.is_AUX_high(0.050):
                 # wait for idle module
-                self.flush()
-                time.sleep(0.050) # 5ms
+                #time.sleep(0.050) # 5ms
                 self.waitForDeviceIdle()
                 time.sleep(0.050) # 5ms
                 # send the message
-                #print(sended, msg[sended:sended + self.PACKET_SIZE])
-                n = self.serdev.write(msg[sended:sended + self.PACKET_SIZE])
+                n = self.serdev.write(to_address_channel + msg[sended:sended + self.PACKET_SIZE - to_address_channel_len])
                 if n > 0:
-                    sended += n
                     self.flush()
-#                 if self.getAUX():
-#                     sended += n
+                    time.sleep(0.050) # 5ms
+                    sended += n - to_address_channel_len
+
             #print(sended, n, msg[sended])
             #print(sended, msg[sended:sended + self.PACKET_SIZE])
             
@@ -258,7 +304,42 @@ class ebyteE32:
 #         self.waitForDeviceIdle()
 #         time.sleep(0.050) # 5ms
 #         return 'OK sendMessage'
+
+    def receive_message_wait1(self):
+        message = self.read()
+        if not message:
+            return b''
+        else:
+            self.waitForDeviceIdle()
+            return message + self.read()
         
+    def receive_message_wait2(self):
+        if not self.is_any():
+            return b''
+        else:
+            self.waitForDeviceIdle()
+            return self.read()
+        
+    def receive_message1(self):
+        message = self.read()
+        if not message:
+            return b''
+        else:
+            while not self.getAUX():
+                msg = self.read()
+                if msg:
+                    message += msg
+            return message
+        
+    def receive_message2(self):
+        if not self.is_any():
+            return b''
+        else:
+            message = b''
+            while not self.getAUX():
+                if self.is_any():
+                    message += self.read()
+            return message
         
     def recvMessage(self, from_address, from_channel, useChecksum=False):
         ''' Receive payload messages from ebyte E32 LoRa modules in transparent or fixed mode. The payload is a JSON string
@@ -291,10 +372,11 @@ class ebyteE32:
         if (js_payload == b'') or (js_payload == None):
             # nothing
             return b''
-        else :
+        else:
             # return js_payload.decode('ascii')
             #return str(js_payload, 'ascii')
             #return str(js_payload, 'UTF-8')
+            return js_payload
             
             # decode message
             msg = ''
@@ -304,7 +386,7 @@ class ebyteE32:
                 print('msg', msg)
             # checksum check
             if useChecksum:
-                cs = int(self.calcChecksum(msg),16)
+                cs = int(self.calcChecksum(msg), 16)
                 if cs != 0:
                     # corrupt
                     return 'corrupt message >' + msg + ' <, checksum ' + str(cs) 
@@ -536,6 +618,20 @@ class ebyteE32:
         # abstract
         raise NotImplementedError("Please implement abstruct method")
 
+    def is_AUX_low(self, t):
+        t1 = time.time()
+        while time.time() - t1 < t:
+            if self.getAUX():
+                return False
+        return self.getAUX() == 0
+    
+    def is_AUX_high(self, t):
+        t1 = time.time()
+        while time.time() - t1 < t:
+            if not self.getAUX():
+                return False
+        return self.getAUX()
+    
     def waitForDeviceIdle(self):
         ''' Wait for the E32 LoRa module to become idle (AUX pin high) '''
 #         if self.getAUX() is None:
@@ -546,7 +642,7 @@ class ebyteE32:
         # loop for device busy
         while not self.getAUX():
             pass # wait
-        time.sleep(0.050)
+        time.sleep(0.050) # debounce # anti rattle
         while not self.getAUX():
             pass # wait
 #             # increment count
