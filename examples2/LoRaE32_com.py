@@ -108,7 +108,7 @@ class ebyteE32_win(ebyteE32):
         return 1
     
     
-    def is_any(self):
+    def in_waiting(self):
         return self.serdev.in_waiting
 
     def read(self)->bytes:

@@ -57,6 +57,7 @@
 #             get/set module parameters or to reset the module.
 #
 ######################################################################
+import time
 from machine import Pin, UART
 
 from LoRaE32 import ebyteE32
@@ -84,13 +85,10 @@ class ebyteE32_ESP32(ebyteE32):
         ''' Start the ebyte E32 LoRa module '''
         super().start()
         
-        print(self.config['port'])
-        print(self.PORT.get(self.config['port']))
-
         # make UART instance
         self.serdev = UART(self.PORT.get(self.config['port']))
         par = self.PARBIT.get(str(self.config['parity'])[1])
-        self.serdev.init(baudrate=self.config['baudrate'], bits=8, parity=par, stop=1) # , timeout=100)
+        self.serdev.init(baudrate=self.config['baudrate'], bits=8, parity=par, stop=1) # , txbuf=512, rxbuf=512) # , timeout=100)
 
         # init UART
         if self.debug:
@@ -117,13 +115,17 @@ class ebyteE32_ESP32(ebyteE32):
         return self.AUX.value()
     
     
-    def is_any(self):
+    def in_waiting(self):
         return self.serdev.any()
 
     def flush(self):
-        #self.serdev.flush()
         pass
-    
+
     def read(self)->bytes:
         return self.serdev.read()
-    
+
+    def time_ms(self):
+        return time.ticks_ms()
+
+    def sleep_ms(self, ms):
+        time.sleep_ms(ms)

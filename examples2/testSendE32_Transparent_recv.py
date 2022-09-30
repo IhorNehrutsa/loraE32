@@ -8,17 +8,16 @@
 import time
 
 from LoRaE32_win import ebyteE32_win as ebyteE32
-e32 = ebyteE32(Port='COM3', Baudrate=115200, AirDataRate='9.6k', Address=0x0001, Channel=0x02, debug=False)
+e32 = ebyteE32(Port='COM3', Baudrate=115200, AirDataRate='0.3k', Address=0x0001, Channel=0x02, debug=False)
 
 # from LoRaE32_ESP32 import ebyteE32_ESP32 as ebyteE32
 # M0pin = 18
 # M1pin = 5
 # AUXpin = 4
-# e32 = ebyteE32(M0pin, M1pin, AUXpin, Baudrate=38400, AirDataRate='19.2k', Address=0x0001, Channel=0x02, debug=True)
-
-e32.reset()
+# e32 = ebyteE32(M0pin, M1pin, AUXpin, Baudrate=9600, AirDataRate='9.6k', Address=0x0001, Channel=0x02, debug=True)
 
 e32.start()
+#e32.reset()
 e32.setConfig('setConfigPwrDwnSave')
 
 to_address = 0x0001
@@ -34,34 +33,38 @@ e32.configMessage(to_address, to_channel)
 print()
 
 teller = 1
-t1 = 0
+t1 = time.time() - 100
 ts = time.time()
 te = time.time()
 MSG_LEN = 0
+
+err = 0
+message_flow = b''
 try:
     while True:
         if e32.getAUX():
         #if e32.is_AUX_high(0.005):
             t2 = time.time()
-            if t2 - t1 > 5+7:
-                #message = { 'msg': 'HELLO WORLD %s - %s - %f\n'%(str(teller), time.ctime(), t2-t1) }
-                message = '>START   #' + '%9d - %7.4f - %7.4f '%(teller, te-ts, t2-t1) + '1234567890' * 40
-
-                #message = '>START   #' + '%9d - %7.4f - %7.4f '%(teller, te-ts, t2-t1) + ' ' * 500
-                #message = '>START    ' + '%9d '%(teller) + '1234567890' * 11 # 48
+            if t2 - te > te - ts + 3:
+            #if True:
+                message = '>START   #'
+                message += ' %8d '%(teller)
+                #message += '- %7.3f - %7.3f '%(te-ts, t2-t1) + '1234567890' * 240 # 45 # 46 # 
                 
     #             n = e32.PACKET_SIZE - len(message) % e32.PACKET_SIZE - 10 - 1
     #             if n > 0:
     #                 message += '-' * n
 
+                #message += ' %8d ' % (len(message) + 20)
                 message += '      END<\n'
 
                 MSG_LEN = len(message) - 1
 
                 print()
-                print('Sending - address %s - channel %d - len %d - message \n%s'%(to_address, to_channel, len(message), message), end='')
+                print('Sending - address %s - channel %d - len %d\n%s'%(to_address, to_channel, len(message), message), end='')
                 ts = time.time()
-                e32.sendMessage(to_address, to_channel, message, useChecksum=False)
+                #e32.sendMessage(to_address, to_channel, message, useChecksum=False)
+                e32.sendMessage(message)
                 te = time.time()
                 print('Sended.')
                 teller += 1
@@ -71,12 +74,31 @@ try:
             
         #msg = e32.recvMessage(from_address, from_channel, useChecksum=False)
         #msg = e32.receive_message_wait1()
-        msg = e32.receive_message_wait2()
-        #msg = e32.receive_message1()
+        #msg = e32.receive_message_wait2()
+        msg = e32.receive_message1()  # faster
+        #msg = e32.receive_message2()  # slower
         if msg:
-            msg = str(msg, 'UTF-8')
-            print('Received - address %s - channel %d - len %d'% (from_address, from_channel, len(msg)), False if len(msg) != MSG_LEN else '')
-            print(msg)
+            if 0:
+                msg = str(msg, 'UTF-8')
+                #print(msg)
+                print(msg, end='')
+                #print('' , len(msg), msg, end='')
+                #print('\n' , len(msg), msg)
+            else:
+                #print(msg)
+                #print(message_flow)
+                message_flow +=msg
+                start = message_flow.find(b'>START')
+                end = message_flow.rfind(b'END<')
+                if (start >= 0) and (end > 0) and (start < end):
+                    message = message_flow[start:end+4]
+                    message = str(message, 'UTF-8')
+                    if len(message) != MSG_LEN:
+                        err += 1
+                    print('Received - address %s - channel %d - len %d - err %d'% (from_address, from_channel, len(message), err), False if len(message) != MSG_LEN else '')
+                    print(message)
+                    message_flow = message_flow[end+4+1:]
+                    #print(len(message_flow), message_flow)
 
 finally:
     e32.stop()

@@ -1,3 +1,4 @@
+import time
 import serial
 from LoRaE32 import ebyteE32
 
@@ -40,13 +41,20 @@ class ebyteE32_win(ebyteE32):
         #return not self.serdev.ri
     
     
-    def is_any(self):
+    def in_waiting(self):
         return self.serdev.in_waiting
 
-
-    def read(self)->bytes:
-        return self.serdev.read_all() # serdev.read_all() is serdev.read(serdev.in_waiting)
-        
+    def out_waiting(self):
+        return self.serdev.out_waiting
 
     def flush(self):
         self.serdev.flush()
+
+    def read(self)->bytes:
+        return self.serdev.read_all()  # serdev.read_all() is serdev.read(serdev.in_waiting)
+
+    def time_ms(self):
+        return round(time.time() * 1000)
+
+    def sleep_ms(self, ms):
+        time.sleep(ms / 1000)

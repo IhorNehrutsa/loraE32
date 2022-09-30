@@ -88,14 +88,13 @@
 #
 ######################################################################
 
-import time
 import json
 
 
 class ebyteE32:
     ''' class to interface an ESP32 via serial commands to the EBYTE E32 Series LoRa modules '''
 
-    PACKET_SIZE = 512 # 58 # 
+    PACKET_SIZE = 58 # 512 # 
     
     # UART parity strings
     PARSTR = { '8N1':'00', '8O1':'01', '8E1':'10' }
@@ -199,11 +198,75 @@ class ebyteE32:
         #self.setOperationMode('wakeup')
         self.setOperationMode('normal')
         self.flush()
-        time.sleep(0.050)
+        self.sleep_ms(50)
         self.waitForDeviceIdle()
-        time.sleep(0.050)
-  
-    def sendMessage(self, to_address, to_channel, payload, useChecksum=False):
+        self.sleep_ms(50)
+
+    def sendMessage(self, payload):
+        # check payload
+        if (type(payload) != dict) and (type(payload) != str):
+            print('payload is not a dictionary or str', payload)
+            return 'NOK sendMessage'
+        
+        if type(payload) == dict:
+            payload = json.dumps(payload)     # convert payload to JSON string
+        
+        # encode message
+        msg = payload.encode('UTF-8')
+        
+        # debug
+        if self.debug:
+            print('msg', msg)
+        
+        sended = 0
+        while sended < len(msg):
+            while not self.getAUX() or self.out_waiting():
+                pass
+            self.sleep_ms(75)  # 150 # 100 # 75 # 70
+            n = self.serdev.write(msg[sended:sended + self.PACKET_SIZE])
+            if n > 0:
+                self.flush()
+                t = self.time_ms()
+                while self.getAUX() and (self.time_ms() - t < 50):
+                    pass
+                sended += n
+
+#         while sended < len(msg):
+#             while not self.getAUX() or self.out_waiting():
+#                 pass
+#             n = self.serdev.write(msg[sended:sended + self.PACKET_SIZE])
+#             if n > 0:
+#                 self.flush()
+#                 sended += n
+#                 while self.getAUX():
+#                     pass
+#                 while not self.getAUX():
+#                     pass
+
+#         while sended < len(msg):
+#             while not self.getAUX() or self.out_waiting():
+#                 pass
+#             self.sleep_ms(50)
+#             while not self.getAUX() or self.out_waiting():
+#                 pass
+#             n = self.serdev.write(msg[sended:sended + self.PACKET_SIZE])
+#             if n > 0:
+#                 self.flush()
+#                 sended += n
+# 
+#                 while self.getAUX():
+#                     pass
+#                 self.sleep_ms(50)
+#                 while self.getAUX():
+#                     pass
+
+#                 t = self.time_ms()
+#                 while self.getAUX() and (self.time_ms() - t < 50):
+#                     pass
+#                 while not self.getAUX():
+#                     pass
+
+    def sendMessage0(self, to_address, to_channel, payload, useChecksum=False):
         ''' Send the payload to ebyte E32 LoRa modules in transparent or fixed mode. The payload is a data dictionary to
             accomodate key value pairs commonly used to store sensor data and is converted to a JSON string before sending.
             The payload can be appended with a 2's complement checksum to validate correct transmission.
@@ -258,34 +321,38 @@ class ebyteE32:
             print('msg', msg)
         
         sended = 0
-        while 0:#sended < len(msg):
-            if self.getAUX():
-                #self.waitForDeviceIdle()
-                #time.sleep(0.050) # 5ms
-                while not self.getAUX():
-                    pass
-                time.sleep(0.050) # 5ms
-                n = self.serdev.write(to_address_channel + msg[sended:sended + self.PACKET_SIZE - to_address_channel_len])
-                if n > 0:
-                    #print(n)
-                    self.flush()
-                    time.sleep(0.050) # 5ms
-                    sended += n - to_address_channel_len
-#                     while not self.getAUX():
-#                         pass
-                
+        #while 0:
         while sended < len(msg):
+#             while not self.getAUX():
+#                 pass
+#             self.sleep_ms(5) # 5ms
+            while not self.getAUX():
+                self.sleep_ms(1)
+                pass
+            n = self.serdev.write(to_address_channel + msg[sended:sended + self.PACKET_SIZE - to_address_channel_len])
+            if n > 0:
+                self.flush()
+                sended += n - to_address_channel_len
+                while self.getAUX():
+                    self.sleep_ms(1)
+                    pass
+#                 self.sleep_ms(5) # 5ms
+#                 while self.getAUX():
+#                     pass
+                
+        while 0:
+        #while sended < len(msg):
             if self.getAUX():
             #if self.is_AUX_high(0.050):
                 # wait for idle module
-                #time.sleep(0.050) # 5ms
+                #self.sleep_ms(50) # 5ms
                 self.waitForDeviceIdle()
-                time.sleep(0.050) # 5ms
+                self.sleep_ms(50) # 5ms
                 # send the message
                 n = self.serdev.write(to_address_channel + msg[sended:sended + self.PACKET_SIZE - to_address_channel_len])
                 if n > 0:
                     self.flush()
-                    time.sleep(0.050) # 5ms
+                    self.sleep_ms(50) # 5ms
                     sended += n - to_address_channel_len
 
             #print(sended, n, msg[sended])
@@ -298,11 +365,11 @@ class ebyteE32:
 #                 self.serdev.write(b' ' * n)
 
 #         self.waitForDeviceIdle()
-#         time.sleep(0.050) # 5ms
+#         self.sleep_ms(50) # 5ms
 #         self.flush()
-#         time.sleep(0.050) # 5ms
+#         self.sleep_ms(50) # 5ms
 #         self.waitForDeviceIdle()
-#         time.sleep(0.050) # 5ms
+#         self.sleep_ms(50) # 5ms
 #         return 'OK sendMessage'
 
     def receive_message_wait1(self):
@@ -314,30 +381,41 @@ class ebyteE32:
             return message + self.read()
         
     def receive_message_wait2(self):
-        if not self.is_any():
+        if not self.in_waiting():
             return b''
         else:
             self.waitForDeviceIdle()
             return self.read()
         
-    def receive_message1(self):
+    def receive_message1(self):  # faster
         message = self.read()
         if not message:
             return b''
         else:
-            while not self.getAUX():
+            while not self.getAUX() or self.in_waiting():
                 msg = self.read()
                 if msg:
                     message += msg
+
+#             msg = True
+#             while not self.getAUX() or self.in_waiting() or msg:
+#                 msg = self.read()
+#                 if msg:
+#                     message += msg
+                     
+#             msg = self.read()
+#             if msg:
+#                 message += msg
+                
             return message
         
-    def receive_message2(self):
-        if not self.is_any():
+    def receive_message2(self):  # slower
+        if not self.in_waiting():
             return b''
         else:
             message = b''
             while not self.getAUX():
-                if self.is_any():
+                if self.in_waiting():
                     message += self.read()
             return message
         
@@ -456,25 +534,31 @@ class ebyteE32:
         if self.debug:
             print('HexCmd', HexCmd)
         if self.config['baudrate'] != 9600:
-            self.serdev.baudrate = 9600;
+            try:
+                self.serdev.baudrate = 9600;
+            except:
+                self.serdev.init(baudrate=9600)
         n = self.serdev.write(bytes(HexCmd))
         if n != len(HexCmd):
             print('Error on serdev.write()', n)
             return 'NOK sendCommand'    
         # wait for result
-        time.sleep(0.050)
+        self.sleep_ms(50)
         # read result
         if command == 'reset':
             result = b''
         else:
             result = self.read()
             # wait for result
-            time.sleep(0.050)
+            self.sleep_ms(50)
             # debug
             if self.debug:
                 print('result', result)
         if self.config['baudrate'] != 9600:
-            self.serdev.baudrate = self.config['baudrate'];
+            try:
+                self.serdev.baudrate = self.config['baudrate']
+            except:
+                self.serdev.init(baudrate=self.config['baudrate'])
         return result
         
     
@@ -594,7 +678,11 @@ class ebyteE32:
         print('================================================')
 
 
-    def is_any(self):
+    def in_waiting(self):
+        # abstract
+        raise NotImplementedError("Please implement abstruct method")
+    
+    def out_waiting(self):
         # abstract
         raise NotImplementedError("Please implement abstruct method")
     
@@ -618,16 +706,28 @@ class ebyteE32:
         # abstract
         raise NotImplementedError("Please implement abstruct method")
 
+    def time_ms(self):
+        # abstract
+        raise NotImplementedError("Please implement abstruct method")
+
+    def time_ms(self):
+        # abstract
+        raise NotImplementedError("Please implement abstruct method")
+
+    def sleep_ms(self, ms):
+        # abstract
+        raise NotImplementedError("Please implement abstruct method")
+
     def is_AUX_low(self, t):
-        t1 = time.time()
-        while time.time() - t1 < t:
+        t1 = self.time_ms()
+        while self.time_ms() - t1 < t:
             if self.getAUX():
                 return False
         return self.getAUX() == 0
     
     def is_AUX_high(self, t):
-        t1 = time.time()
-        while time.time() - t1 < t:
+        t1 = self.time_ms()
+        while self.time_ms() - t1 < t:
             if not self.getAUX():
                 return False
         return self.getAUX()
@@ -635,14 +735,14 @@ class ebyteE32:
     def waitForDeviceIdle(self):
         ''' Wait for the E32 LoRa module to become idle (AUX pin high) '''
 #         if self.getAUX() is None:
-#             time.sleep(0.500)
+#             self.sleep_ms(500)
 #             return
 #         
 #         count = 0
         # loop for device busy
         while not self.getAUX():
             pass # wait
-        time.sleep(0.050) # debounce # anti rattle
+        self.sleep_ms(50) # debounce # anti rattle
         while not self.getAUX():
             pass # wait
 #             # increment count
@@ -651,7 +751,7 @@ class ebyteE32:
 #             if count == 10:
 #                 break
 #             # sleep for 10 ms
-#             time.sleep(0.010)
+#             self.sleep_ms(10)
             
             
     def saveConfigToJson(self):
@@ -717,4 +817,4 @@ class ebyteE32:
         self.setM0(int(bits[0]))
         self.setM1(int(bits[1]))
         # wait a moment
-        time.sleep(0.050)
+        self.sleep_ms(50)

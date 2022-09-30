@@ -31,7 +31,7 @@ try:
     
     while True:
         in_message = None
-        if e32.is_any():
+        if e32.in_waiting():
             in_message = e32.recvMessage(from_address, from_channel, useChecksum=False)
             ttt = time.time()
             
