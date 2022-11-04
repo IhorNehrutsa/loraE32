@@ -112,12 +112,15 @@ class ebyteE32_ESP32(ebyteE32):
     
     
     def getAUX(self):
-        return self.AUX.value()
+        return not (self.AUX.value() == 0)
     
     
     def in_waiting(self):
         return self.serdev.any()
 
+    def out_waiting(self):
+        return 0
+    
     def flush(self):
         pass
 

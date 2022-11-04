@@ -8,13 +8,13 @@
 import time
 
 from LoRaE32_win import ebyteE32_win as ebyteE32
-e32 = ebyteE32(Port='COM3', Baudrate=115200, AirDataRate='0.3k', Address=0x0001, Channel=0x02, debug=False)
+e32 = ebyteE32(Port='COM17', Baudrate=115200, AirDataRate='0.3k', Address=0x0001, Channel=0x02, debug=False)
 
 # from LoRaE32_ESP32 import ebyteE32_ESP32 as ebyteE32
 # M0pin = 18
 # M1pin = 5
 # AUXpin = 4
-# e32 = ebyteE32(M0pin, M1pin, AUXpin, Baudrate=9600, AirDataRate='9.6k', Address=0x0001, Channel=0x02, debug=True)
+# e32 = ebyteE32(M0pin, M1pin, AUXpin, Baudrate=115200, AirDataRate='0.3k', Address=0x0001, Channel=0x02, debug=False)
 
 e32.start()
 #e32.reset()
@@ -45,17 +45,17 @@ try:
         if e32.getAUX():
         #if e32.is_AUX_high(0.005):
             t2 = time.time()
-            if t2 - te > te - ts + 3:
+            if t2 - te > te - ts + 4:
             #if True:
                 message = '>START   #'
                 message += ' %8d '%(teller)
-                #message += '- %7.3f - %7.3f '%(te-ts, t2-t1) + '1234567890' * 240 # 45 # 46 # 
+                message += '- %7.3f - %7.3f '%(te-ts, t2-t1) + '1234567890' * 10  # 150 # 45 # 46 # 240 # 
                 
     #             n = e32.PACKET_SIZE - len(message) % e32.PACKET_SIZE - 10 - 1
     #             if n > 0:
     #                 message += '-' * n
 
-                #message += ' %8d ' % (len(message) + 20)
+                message += ' %8d ' % (len(message) + 20)
                 message += '      END<\n'
 
                 MSG_LEN = len(message) - 1
@@ -70,15 +70,15 @@ try:
                 teller += 1
                 t1 = t2
         
-            #time.sleep(5)
+            time.sleep(1)
             
         #msg = e32.recvMessage(from_address, from_channel, useChecksum=False)
         #msg = e32.receive_message_wait1()
         #msg = e32.receive_message_wait2()
-        msg = e32.receive_message1()  # faster
+        msg = e32.receive_message()  # faster
         #msg = e32.receive_message2()  # slower
         if msg:
-            if 0:
+            if 1:
                 msg = str(msg, 'UTF-8')
                 #print(msg)
                 print(msg, end='')
@@ -86,8 +86,8 @@ try:
                 #print('\n' , len(msg), msg)
             else:
                 #print(msg)
-                #print(message_flow)
                 message_flow +=msg
+                #print('message_flow=', message_flow)
                 start = message_flow.find(b'>START')
                 end = message_flow.rfind(b'END<')
                 if (start >= 0) and (end > 0) and (start < end):

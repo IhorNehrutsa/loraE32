@@ -157,7 +157,7 @@ class ebyteE32:
         self.config['iomode'] = 1                  # IO mode (default 1 = not floating)
         self.config['wutime'] = 0                  # wakeup time from sleep mode (default 0 = 250ms)
         self.config['fec'] = 1                     # forward error correction (default 1 = on)
-        self.config['txpower'] = '11'              # transmission power (default 0 = 20dBm/100mW)
+        self.config['txpower'] = '11'              # transmission power (default 11 = (10-21)dBm/100mW)
         # 
         self.serdev = None                         # instance for UART
         self.debug = debug
@@ -387,27 +387,46 @@ class ebyteE32:
             self.waitForDeviceIdle()
             return self.read()
         
-    def receive_message1(self):  # faster
-        message = self.read()
-        if not message:
+    def receive_message(self):  # faster
+        _message = self.read()
+        #print('_message=', _message)
+        if not _message:
             return b''
         else:
-            while not self.getAUX() or self.in_waiting():
+            msg = True  # re-read if the previous reading was successful 
+            while msg or (not self.getAUX()) or self.in_waiting():
                 msg = self.read()
                 if msg:
-                    message += msg
-
+                    _message += msg
+            msg = self.read()
+            if msg:
+                _message += msg
+            return _message
+        
+#     def receive_message(self):  # faster
+#         message = self.read()
+#         if not message:
+#             return b''
+#         else:
 #             msg = True
 #             while not self.getAUX() or self.in_waiting() or msg:
 #                 msg = self.read()
 #                 if msg:
 #                     message += msg
-                     
 #             msg = self.read()
 #             if msg:
 #                 message += msg
-                
-            return message
+# #             msg = True
+# #             while not self.getAUX() or self.in_waiting() or msg:
+# #                 msg = self.read()
+# #                 if msg:
+# #                     message += msg
+#                      
+# #             msg = self.read()
+# #             if msg:
+# #                 message += msg
+#                 
+#             return message
         
     def receive_message2(self):  # slower
         if not self.in_waiting():
