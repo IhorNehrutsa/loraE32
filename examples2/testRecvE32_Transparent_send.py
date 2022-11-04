@@ -6,8 +6,7 @@
 # receiver(s) - address 0001 - channel 02
 ###########################################
 
-MSG_LEN = 2460
-MSG_LEN = 560
+MSG_LEN = 1570
 
 import time
 
@@ -57,6 +56,7 @@ try:
                 #print('' , len(msg), msg, end='')
                 #print('\n' , len(msg), msg)
             else:
+                print(msg)
                 #print(len(msg), msg)
                 #print(message_flow)
                 message_flow +=msg
