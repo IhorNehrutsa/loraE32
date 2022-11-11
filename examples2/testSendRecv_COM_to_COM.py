@@ -3,8 +3,8 @@ import serial
 
 from at import *
 
-PACKET_SIZE =  1000000 # 1 # 512 # 58
-PERIOD_S = 5
+PACKET_SIZE = 512 # 1 # 512 # 58
+PERIOD_S = 25  # 15
 
 IDLE = 0
 SENDING = 1
@@ -12,26 +12,36 @@ RECEIVING = 2
 
 state = IDLE
 
-serdev1 = serial.Serial('COM17', baudrate=115200, timeout=0) # UART_ANDROID_BAUD_RATE
-#serdev1 = serial.Serial('COM17', baudrate=19200) # UART_ANDROID_BAUD_RATE
+serdev1 = serial.Serial('COM17', baudrate=115200, timeout=0)  # UART_ANDROID_BAUD_RATE
+#serdev1 = serial.Serial('COM17', baudrate=115200)  # UART_ANDROID_BAUD_RATE
 print(serdev1)
 
-AirRate = AIR_RATE['4.8k']
+Air_Rate = AIR_RATE['9.6k']
+
+def to_at(at:str, value:int):
+    if at in (Message_ID, Message_Length):
+        return '%s\%02X\%02X' % (at, value & 0xFF, (value >> 8) & 0xFF)
+    else:
+        return '%s\%02X' % (at, value & 0xFF)
 
 def write_at(serdev, at:str, value:int):
     serdev.flush()
     serdev.timeout = None
     serdev.write((AT_PATTERN_CHAR).encode() * AT_CHAR_NUMBER)
     serdev.write(at.encode())
-    serdev.write(value)
+    #
+    serdev.write(value & 0xFF)
+    if at in (Message_ID, Message_Length):
+        serdev.write((value >> 8) & 0xFF)
+    #
     serdev.timeout = 0
     serdev.flush()
 
-teller = 1
+message_id = 1
 t1 = time.time()
 ts = time.time()
 te = time.time() - PERIOD_S
-MSG_LEN = 0
+MESSAGE_LEN = 0
 
 err = 0
 message_flow = b''
@@ -49,43 +59,51 @@ try:
             #if True:
                 if data_to_LoRa_state < data_bufer_3_4:
                     if sended == 0:
-                        message = '>BEGIN    '
-                        #message += AT_PATTERN_CHAR * AT_CHAR_NUMBER + begin_message + '    '
-                        #message += '>' + AT_PATTERN_CHAR * AT_CHAR_NUMBER + '?_' + '< '
-                        #message += '>' + AT_PATTERN_CHAR * AT_CHAR_NUMBER + SetAirRate + str(AirRate.to_bytes(2, 'little'))[2:-1] + '< '
-                        #message += '>' + AT_PATTERN_CHAR * AT_CHAR_NUMBER + SetAirRate + str(AirRate & 0xFF) + str((AirRate >> 8) & 0xFF) + '< '
-                        message += '>' + AT_PATTERN_CHAR * AT_CHAR_NUMBER + SetAirRate + AirRate + '< '
-                        message += ' #%7d ' % (teller)
-                        message += '- %7.3f ' % (te-ts)
-                        message += '- %7.3f ' % (t2-t1)
-                        message += '1234567890' * 150 # 45 # 46 # 240 #
-                        message += ' %8d ' % (len(message) + 30)
-                        message += ' #%7d ' % (teller)
-                        message += '>' + AT_PATTERN_CHAR * AT_CHAR_NUMBER + GetAirRate + '?' + '< '
-                        #message += AT_PATTERN_CHAR * AT_CHAR_NUMBER + end_message + '    '
-                        message += '      END<'
-                        message = message.encode('UTF-8')
-                        MSG_LEN = len(message)
+                        mess = ''
+                        mess += to_at(Message_ID, message_id)
+                        mess += AT_PATTERN_CHAR * AT_CHAR_NUMBER + Message + 'B'
+                        mess += '<BEGIN'
+                        #mess += '>' + AT_PATTERN_CHAR * AT_CHAR_NUMBER + AirRate + str(AirRate.to_bytes(2, 'little'))[2:-1] + '<'
+                        #mess += '>' + AT_PATTERN_CHAR * AT_CHAR_NUMBER + AirRate + str(AirRate & 0xFF) + str((AirRate >> 8) & 0xFF) + '<'
+                        #mess += '>' + AT_PATTERN_CHAR * AT_CHAR_NUMBER + AirRate + AirRate + '<'
+                        mess += '>' + AT_PATTERN_CHAR * AT_CHAR_NUMBER + AirRate + '?' + '<'
+                        mess += ' #%7d ' % (message_id)
+                        mess += '- %7.3f ' % (te-ts)
+                        mess += '- %7.3f ' % (t2-t1)
+                        mess += '1234567890' * 150  # 150 # 45 # 46 # 240 #
+                        mess += ' #%7d ' % (message_id)
+                        mess += '>' + AT_PATTERN_CHAR * AT_CHAR_NUMBER + AirRate + '?' + '<'
+                        mess += 'END>'
+                        mess += AT_PATTERN_CHAR * AT_CHAR_NUMBER + Message + 'E'
 
-                        print('\nSending - len %d\n%s' % (len(message), message))
+                        message = ''
+                        message += to_at(Message_Length, len(mess))
+                        message += mess
+
+                        MESSAGE_LEN = len(message)
+
+                        print('\nSending - len %d\n%s' % (MESSAGE_LEN, message))
+                        message = message.encode('UTF-8')
+                        #print('\nSending - len %d\n%s' % (MESSAGE_LEN, message))
+
                         ts = time.time()
                         state = SENDING
 
                     n = serdev1.write(message[sended:sended + PACKET_SIZE])
                     if n > 0:
                         sended += n
-                        print('Sended=', sended, 'n=', n)
-                        if sended == len(message):
+                        # print('Sended=', sended, 'n=', n)
+                        if sended == MESSAGE_LEN:
                             te = time.time()
-                            #if teller < 5:
+                            #if message_id < 5:
                             if True:
                                 sended = 0
                                 state = IDLE
-                            print('Sended #', teller)
-                            teller += 1
+                            print('Sended #', message_id)
+                            message_id += 1
                             t1 = t2
 
-                            # write_at(serdev1, SetAirRate, AirRate)
+                            # write_at(serdev1, AirRate, AirRate)
 
         msg = serdev1.read_all()
         if msg:
@@ -105,7 +123,7 @@ try:
                         at_data = str(at_data_bin, 'UTF-8')
                     except:
                         at_data = at_data_bin
-                    print('\n@@@@@ AT:', at, at_data, '|', at_bin, at_data_bin)
+                    print('\n@@@@@ AT:', at, at_data)  # , '|', at_bin, at_data_bin)
                     if at == data_to_LoRa_bufer:
                         data_to_LoRa_state = at_data
                         if at_data not in ('0', '1', '2', '3', '4', '5'):
@@ -144,24 +162,20 @@ try:
                         message_in = str(message_in, 'UTF-8')
                     except:
                         message_in = message_in
-                    if len(message_in) != MSG_LEN:
+                    if len(message_in) != MESSAGE_LEN:
                         err += 1
                     print()
-                    print('Received - len %d - err %d'% (len(message_in), err), False if len(message_in) != MSG_LEN else '')
+                    print('Received - len %d - err %d'% (len(message_in), err), False if len(message_in) != MESSAGE_LEN else '')
                     print(message_in)
                     print('Received')
                     message_flow = message_flow[end+4+1:]
                     #print(len(message_flow), message_flow)
                     state = IDLE
 
-        time.sleep(0.01)
+        time.sleep(0.1)
 
 finally:
     try:
         serdev1.close()
-    except:
-        pass
-    try:
-        serdev2.close()
     except:
         pass

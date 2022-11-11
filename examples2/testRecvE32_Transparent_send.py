@@ -23,10 +23,10 @@ e32.start()
 #e32.reset()
 e32.setConfig('setConfigPwrDwnSave')
 
-from_address = 0xFFFF # 0x0001
+from_address = 0x0000 # 0x0001
 from_channel = 23 # 0x02
 
-to_address = 0xFFFF # 0x0001
+to_address = 0x0000 # 0x0001
 to_channel = 23 # 0x02
 
 e32.configMessage(from_address, from_channel)
