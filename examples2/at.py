@@ -57,9 +57,9 @@ Internal_Error = 'Z'
 def IS_AT_WORD(at_cmd):
     return (at_cmd == Message_ID) or (at_cmd == Message_Length)
 
-def AT_SIZE(at_cmd):
+def AT_VALUE_SIZE(at_cmd):
     if at_cmd == Data:
-        return AT_MAX_SIZE
+        return AT_VALUE_LEN
     elif IS_AT_WORD(at_cmd):
         return 2
     else:
@@ -67,3 +67,43 @@ def AT_SIZE(at_cmd):
 
 def IS_AT_TO_RESIEVER(at_cmd):
     return (at_cmd == Message) or (at_cmd == Message_Length)
+
+def get_at(message):
+    at = None
+    at_value = None
+    if len(message) >= (AT_PATTERN_LEN + 1):
+        at_pos = message.find(AT_PATTERN.encode())
+        if at_pos >= 0:
+            if len(message) >= (at_pos + AT_PATTERN_LEN + 1):
+                at_pos += AT_PATTERN_LEN
+                at_bin = message[at_pos:at_pos + 1]
+                # at = str(at_bin)
+                at = at_bin.decode()
+                at_size = AT_VALUE_SIZE(at)
+                print("at_size=", at_size, at_pos, message)
+                if len(message) >= (at_pos + at_size):
+                    at_value_bin = message[at_pos + 1:at_pos + 1 + at_size]
+
+                    if at in (ESP_ID, Message_ID, Message_Length):
+                        at_value = at_value_bin.to_int()
+                    elif at == Data:
+                        pass
+                    else:
+                        at_value = at_value_bin.decode()
+
+                    print('\n@@@@@ AT:', at, at_value)  # , '|', at_bin, at_value_bin)
+                    if at == data_to_LoRa_bufer:
+                        data_to_LoRa_state = at_value
+                        if at_value not in ('0', '1', '2', '3', '4', '5'):
+                            print('message', message)
+                    elif at == Android_uart_event:
+                        if at_value not in ('0', '1', '2', '3', '4', '5', '6', '7'):
+                            print('message', message)
+                    else:
+                        #print('message', message)
+                        pass
+
+                    #print('message', message)
+                    message = message[at_pos + 1 + at_size:]
+                    #print('message', message)
+    return at, at_value, message

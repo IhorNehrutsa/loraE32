@@ -10,8 +10,10 @@ MSG_LEN = 1570
 
 import time
 
+from at import *
+
 from LoRaE32_win import ebyteE32_win as ebyteE32
-e32 = ebyteE32(Port='COM4', Baudrate=115200, AirDataRate='19.2k', Address=0xFFFF, Channel=23, debug=False)
+e32 = ebyteE32(Port='COM4', Baudrate=115200, AirDataRate='19.2k', Address=0x0000, Channel=23, debug=False)
 
 # from LoRaE32_ESP32 import ebyteE32_ESP32 as ebyteE32
 # M0pin = 18
@@ -56,24 +58,26 @@ try:
                 #print('' , len(msg), msg, end='')
                 #print('\n' , len(msg), msg)
             else:
-                print(msg)
+                #print('msg=', msg)
                 #print(len(msg), msg)
                 #print(message_flow)
                 message_flow +=msg
-                begin = message_flow.find(b'>BEGIN')
-                end = message_flow.rfind(b'END<')
+                # begin = message_flow.find(b'<BEGIN')
+                # end = message_flow.rfind(b'END>')
+                begin = message_flow.find((AT_PATTERN + "SB").encode())
+                end = message_flow.rfind((AT_PATTERN + "SE").encode())
                 if (begin >= 0) and (end > 0) and (begin < end):
-                    message = message_flow[begin:end+4]
-                    try:
-                        message = str(message, 'UTF-8')
-                    except:
-                        message = message
+                    message = message_flow[begin:end + AT_PATTERN_LEN + 2]
+                    # try:
+                    #     message = str(message, 'UTF-8')
+                    # except:
+                    #     message = message
                     if len(message) != MSG_LEN:
                         err += 1
                     print()
                     print('Received - address %s - channel %d - len %d - err %d'% (from_address, from_channel, len(message), err), False if len(message) != MSG_LEN else '')
-                    print(message)
-                    message_flow = message_flow[end+4+1:]
+                    #print(message)
+                    message_flow = message_flow[end + AT_PATTERN_LEN + 2:]
                     #print(len(message_flow), message_flow)
 
                     if 1:#len(message) == MSG_LEN:

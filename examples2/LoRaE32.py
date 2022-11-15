@@ -1,19 +1,19 @@
 #######################################################################
-# LoRa        58bytes recv            CP2102 
+# LoRa        58bytes recv            CP2102
 # TX -------            ------------- RX
 #           ||||||||||||
 # AUX ---                 ----------- DSR
 #        |_______________|
 #       t1  t2        t3 t4
 #
-#        t1-t2    t1-t4    t3-t4   t2-t3 
+#        t1-t2    t1-t4    t3-t4   t2-t3
 #        5.7ms   532.0ms    1.6ms              1200 -  0.3k
 #                                   16ms      38400 -  0.3k
 #        6.0ms    68.0ms    0.3ms   62ms       9600 -  2.4k
 #        5.4ms    11.4ms    1.0ms  5.8ms     115200 - 19.2k
 #
 #######################################################################
-# LoRa   512bytes send                CP2102 
+# LoRa   512bytes send                CP2102
 # RX --                 ------------- TX
 #      |||||||||||||||||
 # AUX ---                         --- DSR
@@ -67,7 +67,7 @@
 #        2. Fixed Broadcast : The transmitted message has address FFFF and a
 #           channel. All modules with any address and the same channel of
 #           the message will receive it.
-#             
+#
 #        3. Fixed Monitor : The receiver has adress FFFF and a channel.
 #           It will receive messages from all modules with any address and
 #           the same channel as the receiver.
@@ -94,8 +94,8 @@ import json
 class ebyteE32:
     ''' class to interface an ESP32 via serial commands to the EBYTE E32 Series LoRa modules '''
 
-    PACKET_SIZE = 58 # 512 # 
-    
+    PACKET_SIZE = 58 # 512 #
+
     # UART parity strings
     PARSTR = { '8N1':'00', '8O1':'01', '8E1':'10' }
     PARINV = { v:k for k, v in PARSTR.items() }
@@ -158,10 +158,10 @@ class ebyteE32:
         self.config['wutime'] = 0                  # wakeup time from sleep mode (default 0 = 250ms)
         self.config['fec'] = 1                     # forward error correction (default 1 = on)
         self.config['txpower'] = '11'              # transmission power (default 11 = (10-21)dBm/100mW)
-        # 
+        #
         self.serdev = None                         # instance for UART
         self.debug = debug
-        
+
 
     def start(self):
         ''' Start the ebyte E32 LoRa module '''
@@ -170,7 +170,7 @@ class ebyteE32:
             self.config['model'] = '868T20D'
         #if self.config['port'] not in self.PORT:
         #    self.config['port'] = 'U1'
-        if int(self.config['baudrate']) not in self.BAUDRATE:    
+        if int(self.config['baudrate']) not in self.BAUDRATE:
             self.config['baudrate'] = 9600
         if self.config['parity'] not in self.PARSTR:
             self.config['parity'] = '8N1'
@@ -181,7 +181,7 @@ class ebyteE32:
 
         # set config to the ebyte E32 LoRa module
         # self.setConfig('setConfigPwrDwnNoSave')
-        
+
     def configMessage(self, to_address, to_channel):
         # type of transmission
         if (to_address == self.config['address']) and (to_channel == self.config['channel']):
@@ -204,20 +204,23 @@ class ebyteE32:
 
     def sendMessage(self, payload):
         # check payload
-        if (type(payload) != dict) and (type(payload) != str):
-            print('payload is not a dictionary or str', payload)
-            return 'NOK sendMessage'
-        
+        # if (type(payload) != dict) and (type(payload) != str):
+        #     print('payload is not a dictionary or str', payload)
+        #     return 'NOK sendMessage'
+
         if type(payload) == dict:
             payload = json.dumps(payload)     # convert payload to JSON string
-        
+
         # encode message
-        msg = payload.encode('UTF-8')
-        
+        try:
+            msg = payload.encode('UTF-8')
+        except:
+            msg = payload
+
         # debug
         if self.debug:
             print('msg', msg)
-        
+
         sended = 0
         while sended < len(msg):
             while not self.getAUX() or self.out_waiting():
@@ -253,7 +256,7 @@ class ebyteE32:
 #             if n > 0:
 #                 self.flush()
 #                 sended += n
-# 
+#
 #                 while self.getAUX():
 #                     pass
 #                 self.sleep_ms(50)
@@ -287,7 +290,7 @@ class ebyteE32:
 #         # put into wakeup mode (includes preamble signals to wake up device in powersave or sleep mode)
 #         #self.setOperationMode('wakeup')
 #         self.setOperationMode('normal')
-            
+
         # check payload
         if (type(payload) != dict) and (type(payload) != str):
             print('payload is not a dictionary or str', payload)
@@ -306,20 +309,20 @@ class ebyteE32:
             js_payload = json.dumps(payload)     # convert payload to JSON string
         else:
             js_payload = payload
-        
+
 #             for i in range(len(js_payload)):      # message
 #                 msg.append(ord(js_payload[i]))    # ascii code of character
-        
+
         #msg += js_payload.encode(encoding='UTF-8')
         msg += js_payload.encode('UTF-8')
-        
+
         if useChecksum:                       # attach 2's complement checksum
             msg += int(self.calcChecksum(js_payload), 16).to_bytes(1,'big')
-            
+
         # debug
         if self.debug:
             print('msg', msg)
-        
+
         sended = 0
         #while 0:
         while sended < len(msg):
@@ -339,7 +342,7 @@ class ebyteE32:
 #                 self.sleep_ms(5) # 5ms
 #                 while self.getAUX():
 #                     pass
-                
+
         while 0:
         #while sended < len(msg):
             if self.getAUX():
@@ -357,9 +360,9 @@ class ebyteE32:
 
             #print(sended, n, msg[sended])
             #print(sended, msg[sended:sended + self.PACKET_SIZE])
-            
+
 #            print(js_payload, msg)
-        
+
 #             n = self.PACKET_SIZE - len(msg) % self.PACKET_SIZE
 #             if n > 0:
 #                 self.serdev.write(b' ' * n)
@@ -379,21 +382,21 @@ class ebyteE32:
         else:
             self.waitForDeviceIdle()
             return message + self.read()
-        
+
     def receive_message_wait2(self):
         if not self.in_waiting():
             return b''
         else:
             self.waitForDeviceIdle()
             return self.read()
-        
+
     def receive_message(self):  # faster
         _message = self.read()
         #print('_message=', _message)
-        if not _message:
+        if not _message and self.getAUX():
             return b''
         else:
-            msg = True  # re-read if the previous reading was successful 
+            msg = True  # re-read if the previous reading was successful
             while msg or (not self.getAUX()) or self.in_waiting():
                 msg = self.read()
                 if msg:
@@ -402,7 +405,7 @@ class ebyteE32:
             if msg:
                 _message += msg
             return _message
-        
+
 #     def receive_message(self):  # faster
 #         message = self.read()
 #         if not message:
@@ -421,13 +424,13 @@ class ebyteE32:
 # #                 msg = self.read()
 # #                 if msg:
 # #                     message += msg
-#                      
+#
 # #             msg = self.read()
 # #             if msg:
 # #                 message += msg
-#                 
+#
 #             return message
-        
+
     def receive_message2(self):  # slower
         if not self.in_waiting():
             return b''
@@ -437,7 +440,7 @@ class ebyteE32:
                 if self.in_waiting():
                     message += self.read()
             return message
-        
+
     def recvMessage(self, from_address, from_channel, useChecksum=False):
         ''' Receive payload messages from ebyte E32 LoRa modules in transparent or fixed mode. The payload is a JSON string
             of a data dictionary to accomodate key value pairs commonly used to store sensor data. If checksumming is used, the
@@ -458,8 +461,8 @@ class ebyteE32:
 #             self.setTransmissionMode(1)
 #         # put into normal mode
 #         self.setOperationMode('normal')
-            
-            
+
+
         # receive message
         js_payload = self.read()
         # debug
@@ -474,7 +477,7 @@ class ebyteE32:
             #return str(js_payload, 'ascii')
             #return str(js_payload, 'UTF-8')
             return js_payload
-            
+
             # decode message
             msg = ''
             for i in range(len(js_payload)):
@@ -486,7 +489,7 @@ class ebyteE32:
                 cs = int(self.calcChecksum(msg), 16)
                 if cs != 0:
                     # corrupt
-                    return 'corrupt message >' + msg + ' <, checksum ' + str(cs) 
+                    return 'corrupt message >' + msg + ' <, checksum ' + str(cs)
                 else:
                     # message ok, remove checksum
                     msg = msg[:-1]
@@ -496,8 +499,8 @@ class ebyteE32:
 #                 except:
 #                     return msg
             return msg
-        
-    
+
+
     def calcChecksum(self, payload):
         ''' Calculates checksum for sending/receiving payloads. Sums the ASCII character values mod256 and returns
             the lower byte of the two's complement of that value in hex notation. '''
@@ -511,7 +514,7 @@ class ebyteE32:
             res = self.sendCommand('reset')
             # discard result
             return 'OK reset'
-          
+
         except Exception as E:
             if self.debug:
                 print('error on reset', E)
@@ -528,13 +531,13 @@ class ebyteE32:
                     self.serdev.close()
                 del self.serdev
             return 'OK stop'
-            
+
         except Exception as E:
             if self.debug:
                 print('error on stop UART', E)
             return 'NOK stop'
-        
-    
+
+
     def sendCommand(self, command):
         ''' Send a command to the ebyte E32 LoRa module.
             The module has to be in sleep mode '''
@@ -560,7 +563,7 @@ class ebyteE32:
         n = self.serdev.write(bytes(HexCmd))
         if n != len(HexCmd):
             print('Error on serdev.write()', n)
-            return 'NOK sendCommand'    
+            return 'NOK sendCommand'
         # wait for result
         self.sleep_ms(50)
         # read result
@@ -579,8 +582,8 @@ class ebyteE32:
             except:
                 self.serdev.init(baudrate=self.config['baudrate'])
         return result
-        
-    
+
+
     def getVersion(self):
         ''' Get the version info from the ebyte E32 LoRa module '''
         try:
@@ -599,13 +602,13 @@ class ebyteE32:
                 print('features    \t%d'%(result[3]))
                 print('================================================')
             return 'OK getVersion'
-        
+
         except Exception as E:
             if self.debug:
                 print('Error on getVersion: ',E)
             return 'NOK getVersion'
-        
-    
+
+
     def getConfig(self):
         ''' Get config parameters from the ebyte E32 LoRa module '''
         try:
@@ -623,8 +626,8 @@ class ebyteE32:
         except Exception as E:
             if self.debug:
                 print('Error on getConfig: ',E)
-            return 'NOK getConfig'  
-    
+            return 'NOK getConfig'
+
 
     def decodeConfig(self, message):
         ''' decode the config message from the ebyte E32 LoRa module to update the config dictionary '''
@@ -646,8 +649,8 @@ class ebyteE32:
         self.config['wutime'] = int(bits[2:5])
         self.config['fec'] = int(bits[5:6])
         self.config['txpower'] = bits[6:]
-        
-    
+
+
     def encodeConfig(self):
         ''' encode the config dictionary to create the config message of the ebyte E32 LoRa module '''
         # Initialize config message
@@ -675,7 +678,7 @@ class ebyteE32:
         bits += self.config['txpower']
         message.append(int(bits, 2))
         return message
-    
+
 
     def showConfig(self):
         ''' Show the config parameters of the ebyte E32 LoRa module on the shell '''
@@ -684,7 +687,7 @@ class ebyteE32:
         print('frequency   \t%dMhz'%(self.config['frequency']))
         print('address     \t0x%04x'%(self.config['address']))
         print('channel     \t0x%02x'%(self.config['channel']))
-        print('datarate    \t%sbps'%(self.config['datarate']))                
+        print('datarate    \t%sbps'%(self.config['datarate']))
         print('port        \t%s'%(self.config['port']))
         print('baudrate    \t%dbps'%(self.config['baudrate']))
         print('parity      \t%s'%(self.config['parity']))
@@ -700,27 +703,27 @@ class ebyteE32:
     def in_waiting(self):
         # abstract
         raise NotImplementedError("Please implement abstruct method")
-    
+
     def out_waiting(self):
         # abstract
         raise NotImplementedError("Please implement abstruct method")
-    
+
     def read(self)->bytes:
         # abstract
         raise NotImplementedError("Please implement abstruct method")
-    
+
     def setM0(self, value):
         # abstract
         raise NotImplementedError("Please implement abstruct method")
-    
+
     def setM1(self, value):
         # abstract
         raise NotImplementedError("Please implement abstruct method")
-    
+
     def getAUX(self):
         # abstract
         raise NotImplementedError("Please implement abstruct method")
-    
+
     def flush(self):
         # abstract
         raise NotImplementedError("Please implement abstruct method")
@@ -743,20 +746,20 @@ class ebyteE32:
             if self.getAUX():
                 return False
         return self.getAUX() == 0
-    
+
     def is_AUX_high(self, t):
         t1 = self.time_ms()
         while self.time_ms() - t1 < t:
             if not self.getAUX():
                 return False
         return self.getAUX()
-    
+
     def waitForDeviceIdle(self):
         ''' Wait for the E32 LoRa module to become idle (AUX pin high) '''
 #         if self.getAUX() is None:
 #             self.sleep_ms(500)
 #             return
-#         
+#
 #         count = 0
         # loop for device busy
         while not self.getAUX():
@@ -771,23 +774,23 @@ class ebyteE32:
 #                 break
 #             # sleep for 10 ms
 #             self.sleep_ms(10)
-            
-            
+
+
     def saveConfigToJson(self):
-        ''' Save config dictionary to JSON file ''' 
-        with open('E32config.json', 'w') as outfile:  
-            json.dump(self.config, outfile)    
+        ''' Save config dictionary to JSON file '''
+        with open('E32config.json', 'w') as outfile:
+            json.dump(self.config, outfile)
 
 
     def loadConfigFromJson(self):
-        ''' Load config dictionary from JSON file ''' 
+        ''' Load config dictionary from JSON file '''
         with open('E32config.json', 'r') as infile:
             result = json.load(infile)
         print(self.config)
-        
-    
+
+
     def calcFrequency(self):
-        ''' Calculate the frequency (= minimum frequency + channel * 1MHz)''' 
+        ''' Calculate the frequency (= minimum frequency + channel * 1MHz)'''
         # get minimum and maximum frequency
         freqkey = int(self.config['model'].split('T')[0])
         minfreq = self.FREQ.get(freqkey)[0]
@@ -800,14 +803,14 @@ class ebyteE32:
         else:
             self.config['frequency'] = freq
 
-        
+
     def setTransmissionMode(self, transmode):
         ''' Set the transmission mode of the E32 LoRa module '''
         if transmode != self.config['transmode']:
             self.config['transmode'] = transmode
             self.setConfig('setConfigPwrDwnNoSave')
-            
-            
+
+
     def setConfig(self, save_cmd):
         ''' Set config parameters for the ebyte E32 LoRa module '''
         # send the command
@@ -815,10 +818,10 @@ class ebyteE32:
         # check result
         if len(result) != 6:
             return 'NOK setConfig'
-        # debug 
+        # debug
         if self.debug:
             # decode result
-            self.decodeConfig(result) 
+            self.decodeConfig(result)
             # show config
             self.showConfig()
         # save config to json file
