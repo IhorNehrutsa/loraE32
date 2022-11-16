@@ -22,13 +22,11 @@ data_bufer_lose = '5'
 ESP_ID = 'I'  # next byte is unique number which is factory-programmed by Espressif
 Get_ESP_ID = 'i'
 
-Message_ID = 'M'
+Message_ID_Length = 'M'
 
-Message_Length = 'L'
+Message_Begin_End = 'S'
 
-Message = 'S'
-
-Data = 'D'
+Message_Data = 'D'
 
 AIR_RATE = { '0.3k':'0', '1.2k':'1', '2.4k':'2', '4.8k':'3', '9.6k':'4', '19.2k':'5' }
 AirRate = 'A'
@@ -54,19 +52,22 @@ Reset = 'R'
 
 Internal_Error = 'Z'
 
-def IS_AT_WORD(at_cmd):
-    return (at_cmd == Message_ID) or (at_cmd == Message_Length)
-
 def AT_VALUE_SIZE(at_cmd):
-    if at_cmd == Data:
-        return AT_VALUE_LEN
-    elif IS_AT_WORD(at_cmd):
-        return 2
+    if at_cmd == Message_Data:
+        return 5
+    elif at_cmd == Message_ID_Length:
+        return 4
     else:
         return 1
 
 def IS_AT_TO_RESIEVER(at_cmd):
-    return (at_cmd == Message) or (at_cmd == Message_Length)
+    return (at_cmd == Message_Data) or (at_cmd == Message_ID_Length) or (at_cmd == Message_Begin_End)
+
+class esp:
+    ID = 0
+    Message_ID = 0
+    Message_Length = 0
+    Message_Ofset = 0
 
 def get_at(message):
     at = None
@@ -84,10 +85,22 @@ def get_at(message):
                 if len(message) >= (at_pos + at_size):
                     at_value_bin = message[at_pos + 1:at_pos + 1 + at_size]
 
-                    if at in (ESP_ID, Message_ID, Message_Length):
+                    if at == ESP_ID:
                         at_value = at_value_bin.to_int()
-                    elif at == Data:
-                        pass
+                    elif at == Message_ID_Length:
+                        at_value_bin = message[at_pos + 1:at_pos + 1 + 2]
+                        esp.Message_ID = at_value_bin.decode()
+
+                        at_value_bin = message[at_pos + 1 + 2:at_pos + 1 + 2 + 2]
+                        esp.Message_Length = at_value_bin.decode()
+
+                    elif at == Message_Data:
+                        at_value_bin = message[at_pos + 1:at_pos + 1 + 2]
+                        esp.Message_ID = at_value_bin.decode()
+
+                        at_value_bin = message[at_pos + 1 + 2:at_pos + 1 + 2 + 2]
+                        esp.Message_Ofset = at_value_bin.decode()
+
                     else:
                         at_value = at_value_bin.decode()
 
@@ -107,3 +120,21 @@ def get_at(message):
                     message = message[at_pos + 1 + at_size:]
                     #print('message', message)
     return at, at_value, message
+
+def str_to_bytes(message):
+    # b = []
+    # for x in message:
+    #     b.append(ord(x))  # ascii code of character
+
+    # b = [None] * len(message)
+    # for i in range(len(message)):
+    #     b[i] = ord(message[i])  # ascii code of character
+    # return b
+
+    return [ord(x) for x in message]
+
+def bytes_to_str(message):
+    msg = ''
+    for i in range(len(message)):
+        msg += chr(message[i])
+    return msg

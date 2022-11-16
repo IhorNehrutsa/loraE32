@@ -12,8 +12,8 @@ import time
 
 from at import *
 
-from LoRaE32_win import ebyteE32_win as ebyteE32
-e32 = ebyteE32(Port='COM4', Baudrate=115200, AirDataRate='19.2k', Address=0x0000, Channel=23, debug=False)
+from LoRaE32_win import ebyteE32_win
+e32 = ebyteE32_win(Port='COM4', Baudrate=115200, AirDataRate='19.2k', Address=0x0000, Channel=23, debug=False)
 
 # from LoRaE32_ESP32 import ebyteE32_ESP32 as ebyteE32
 # M0pin = 18
@@ -37,6 +37,8 @@ e32.getConfig()
 e32.configMessage(from_address, from_channel)
 print()
 
+e32.sendMessage("TEST")
+
 err = 0
 message_flow = b''
 try:
@@ -48,11 +50,8 @@ try:
 
         msg = e32.receive_message()
         if msg:
-            if 0:
-                try:
-                    msg = str(msg, 'UTF-8')
-                except:
-                    msg = msg
+            if 1:
+                msg = bytes_to_str(msg)
                 #print(msg)
                 print(msg, end='')
                 #print('' , len(msg), msg, end='')
@@ -68,10 +67,7 @@ try:
                 end = message_flow.rfind((AT_PATTERN + "SE").encode())
                 if (begin >= 0) and (end > 0) and (begin < end):
                     message = message_flow[begin:end + AT_PATTERN_LEN + 2]
-                    # try:
-                    #     message = str(message, 'UTF-8')
-                    # except:
-                    #     message = message
+                    msg = bytes_to_str(msg)
                     if len(message) != MSG_LEN:
                         err += 1
                     print()

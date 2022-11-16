@@ -4,7 +4,7 @@ import serial
 from at import *
 
 PACKET_SIZE = 512 # 1 # 512 # 58
-PERIOD_S = 25  # 15
+PERIOD_S = 10  # 15
 
 IDLE = 0
 SENDING = 1
@@ -12,15 +12,15 @@ RECEIVING = 2
 
 state = IDLE
 
-serdev1 = serial.Serial('COM17', baudrate=115200, timeout=0)  # UART_ANDROID_BAUD_RATE
-#serdev1 = serial.Serial('COM17', baudrate=115200)  # UART_ANDROID_BAUD_RATE
-print(serdev1)
+serdev = serial.Serial('COM17', baudrate=115200, timeout=0)  # UART_ANDROID_BAUD_RATE
+#serdev = serial.Serial('COM17', baudrate=115200)  # UART_ANDROID_BAUD_RATE
+print(serdev)
 
 Air_Rate = AIR_RATE['9.6k']
 
 def to_at(at:str, value:int):
-    if at in (Message_ID, Message_Length):
-        return AT_PATTERN + at + chr(value & 0xFF) + chr((value >> 8) & 0xFF)
+    if at == Message_ID_Length:
+        return AT_PATTERN + at + chr(esp.Message_ID & 0xFF) + chr((esp.Message_ID >> 8) & 0xFF) + chr(esp.Message_Length & 0xFF) + chr((esp.Message_Length >> 8) & 0xFF)
     else:
         return AT_PATTERN + at + chr(value & 0xFF)
 
@@ -30,14 +30,23 @@ def write_at(serdev, at:str, value:int):
     serdev.write(AT_PATTERN.encode())
     serdev.write(at.encode())
     #
-    serdev.write(value & 0xFF)
-    if at in (Message_ID, Message_Length):
-        serdev.write((value >> 8) & 0xFF)
+    if at == Message_ID_Length:
+        serdev.write(esp.Message_ID & 0xFF)
+        serdev.write((esp.Message_ID >> 8) & 0xFF)
+        serdev.write(esp.Message_Length & 0xFF)
+        serdev.write((esp.Message_Length >> 8) & 0xFF)
+    # elif at == ESP_ID:
+    #     pass
+    else:
+        serdev.write(value & 0xFF)
     #
-    serdev.timeout = 0
     serdev.flush()
+    serdev.timeout = 0
 
-message_id = 1
+write_at(serdev, ESP_ID, 0)
+#write_at(serdev, Get_ESP_ID, ord('?'))
+
+esp.Message_ID = 1
 t1 = time.time()
 ts = time.time()
 te = time.time() - PERIOD_S
@@ -60,89 +69,88 @@ try:
                 if data_to_LoRa_state < data_bufer_3_4:
                     if sended == 0:
                         mess = ''
+                        mess += '<<<       '
                         #mess += '<BEGIN'
                         #mess += '>' + AT_PATTERN + AirRate + str(AirRate.to_bytes(2, 'little'))[2:-1] + '<'
                         #mess += '>' + AT_PATTERN + AirRate + str(AirRate & 0xFF) + str((AirRate >> 8) & 0xFF) + '<'
                         #mess += '>' + AT_PATTERN + AirRate + AirRate + '<'
                         #mess += '>' + AT_PATTERN + AirRate + '?' + '<'
-                        mess += ' #%7d ' % (message_id)
+                        mess += ' #%7d ' % (esp.Message_ID)
                         mess += '- %7.3f ' % (te-ts)
                         mess += '- %7.3f ' % (t2-t1)
-                        mess += '1234567890' * 150  # 150 # 45 # 46 # 240 #
-                        mess += ' #%7d ' % (message_id)
+                        mess += '1234567890' * 15  # 150 # 45 # 46 # 240 #
+                        mess += ' #%7d ' % (esp.Message_ID)
                         #mess += '>' + AT_PATTERN + AirRate + '?' + '<'
                         #mess += 'END>'
+                        mess += '       >>>'
 
+                        esp.Message_Length=len(mess)
                         message = ''
-                        message += to_at(Message_ID, message_id)
-                        message += AT_PATTERN + Message + 'B'
-                        message += to_at(Message_Length, len(mess))
+                        message += AT_PATTERN + Message_Begin_End + 'B'
+                        message += to_at(Message_ID_Length, None)
                         message += mess
-                        message += AT_PATTERN + Message + 'E'
+                        message += AT_PATTERN + Message_Begin_End + 'E'
 
-                        MESSAGE_LEN = len(message)
+                        message_ = str_to_bytes(message)
 
-                        print('\nSending - len %d\n%s' % (MESSAGE_LEN, message))
-                        message = message.encode('UTF-8')
-                        #print('\nSending - len %d\n%s' % (MESSAGE_LEN, message))
+                        MESSAGE_LEN = len(message_)
+                        print('\nSending #%d %d %d\n%s' % (esp.Message_ID, MESSAGE_LEN, len(mess), message))
+                        # print('\nSending #%d %d %d\n%s' % (esp.Message_ID, MESSAGE_LEN, len(mess), message_))
 
                         ts = time.time()
                         state = SENDING
 
-                    n = serdev1.write(message[sended:sended + PACKET_SIZE])
+                    n = serdev.write(message_[sended:sended + PACKET_SIZE])
                     if n > 0:
                         sended += n
                         # print('Sended=', sended, 'n=', n)
-                        if sended == MESSAGE_LEN:
+                        if sended >= MESSAGE_LEN:
+                            print('Sended #%d %d' % (esp.Message_ID, sended))
                             te = time.time()
-                            #if message_id < 5:
-                            if True:
+                            if esp.Message_ID < 1:
+                            #if True:
                                 sended = 0
                                 state = IDLE
-                            print('Sended #', message_id)
-                            message_id += 1
+                            esp.Message_ID += 1
                             t1 = t2
 
-                            # write_at(serdev1, AirRate, AirRate)
+                            # write_at(serdev, AirRate, AirRate)
 
         msg = None
-        msg = serdev1.read_all()
+        # if serdev.in_waiting:
+        #     msg = serdev.read_all()
         if msg:
             message_flow += msg
             print('msg=', msg)
             print('message_flow=', message_flow)
 
-            #at, at_value, message_flow = get_at(message_flow)
-            #print('message_flow=', at, at_value, message_flow)
+            at, at_value, message_flow = get_at(message_flow)
+            print('message_flow=', at, at_value, message_flow)
 
         if msg:
-            if 0:
+            if 1:
                 #print(msg)
+                msg = bytes_to_str(msg)
                 print('msg=', msg)
-                try:
-                #    msg = str(msg, 'UTF-8')
-                    pass
-                except:
-                #    msg = msg
-                    pass
                 #print(msg, end='')
                 #print('' , len(msg), msg, end='')
                 #print('\n' , len(msg), msg)
             else:
-                begin = message_flow.find(b'<BEGIN')
-                end = message_flow.rfind(b'END>')
+                # begin = message_flow.find(b'<BEGIN')
+                # end = message_flow.rfind(b'END>')
+                begin = message_flow.find((AT_PATTERN + "SB").encode())
+                end = message_flow.rfind((AT_PATTERN + "SE").encode())
                 if begin >= 0:
                     state = RECEIVING
                 if (begin >= 0) and (end > 0) and (begin < end):
                     message_in = message_flow[begin:end+4]
-                    try:
-                        message_in = str(message_in, 'UTF-8')
-                    except:
-                        message_in = message_in
+
+                    message_in = bytes_to_str(message_in)
+
                     if len(message_in) != MESSAGE_LEN:
                         err += 1
                     print()
-                    print('Received - len %d - err %d'% (len(message_in), err), False if len(message_in) != MESSAGE_LEN else '')
+                    print('Received %d - err %d'% (len(message_in), err), False if len(message_in) != MESSAGE_LEN else '')
                     print(message_in)
                     print('Received')
                     message_flow = message_flow[end+4+1:]
@@ -153,6 +161,6 @@ try:
 
 finally:
     try:
-        serdev1.close()
+        serdev.close()
     except:
         pass
