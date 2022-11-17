@@ -50,10 +50,11 @@ try:
 
         msg = e32.receive_message()
         if msg:
-            if 1:
+            if 0:
+                #print(msg, end='')
                 msg = bytes_to_str(msg)
                 #print(msg)
-                print(msg, end='')
+                print(msg, end=' ')
                 #print('' , len(msg), msg, end='')
                 #print('\n' , len(msg), msg)
             else:
@@ -61,10 +62,10 @@ try:
                 #print(len(msg), msg)
                 #print(message_flow)
                 message_flow +=msg
-                # begin = message_flow.find(b'<BEGIN')
-                # end = message_flow.rfind(b'END>')
-                begin = message_flow.find((AT_PATTERN + "SB").encode())
-                end = message_flow.rfind((AT_PATTERN + "SE").encode())
+                begin = message_flow.find(b'<<<')
+                end = message_flow.rfind(b'>>>')
+#                 begin = message_flow.find((AT_PATTERN + "SB").encode())
+#                 end = message_flow.rfind((AT_PATTERN + "SE").encode())
                 if (begin >= 0) and (end > 0) and (begin < end):
                     message = message_flow[begin:end + AT_PATTERN_LEN + 2]
                     msg = bytes_to_str(msg)

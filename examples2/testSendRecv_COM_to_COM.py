@@ -4,7 +4,7 @@ import serial
 from at import *
 
 PACKET_SIZE = 512 # 1 # 512 # 58
-PERIOD_S = 10  # 15
+PERIOD_S = 5 # 10  # 15
 
 IDLE = 0
 SENDING = 1
@@ -12,7 +12,7 @@ RECEIVING = 2
 
 state = IDLE
 
-serdev = serial.Serial('COM17', baudrate=115200, timeout=0)  # UART_ANDROID_BAUD_RATE
+serdev = serial.Serial('COM17', baudrate=9600, timeout=0)  # UART_ANDROID_BAUD_RATE
 #serdev = serial.Serial('COM17', baudrate=115200)  # UART_ANDROID_BAUD_RATE
 print(serdev)
 
@@ -20,31 +20,32 @@ Air_Rate = AIR_RATE['9.6k']
 
 def to_at(at:str, value:int):
     if at == Message_ID_Length:
-        return AT_PATTERN + at + chr(esp.Message_ID & 0xFF) + chr((esp.Message_ID >> 8) & 0xFF) + chr(esp.Message_Length & 0xFF) + chr((esp.Message_Length >> 8) & 0xFF)
+        s = AT_PATTERN + at + chr(esp.Message_ID & 0xFF) + chr((esp.Message_ID >> 8) & 0xFF) + chr(esp.Message_Length & 0xFF) + chr((esp.Message_Length >> 8) & 0xFF)
+        print(len(s), s)
+        return s
     else:
-        return AT_PATTERN + at + chr(value & 0xFF)
+        s = AT_PATTERN + at + chr(value & 0xFF)
+        print(len(s), s)
+        return s
 
-def write_at(serdev, at:str, value:int):
-    serdev.flush()
+def write_at(at:str, value:int):
+    #print('write_at()', at, value, serdev.out_waiting)
     serdev.timeout = None
+    serdev.flush()
     serdev.write(AT_PATTERN.encode())
     serdev.write(at.encode())
-    #
     if at == Message_ID_Length:
-        serdev.write(esp.Message_ID & 0xFF)
-        serdev.write((esp.Message_ID >> 8) & 0xFF)
-        serdev.write(esp.Message_Length & 0xFF)
-        serdev.write((esp.Message_Length >> 8) & 0xFF)
-    # elif at == ESP_ID:
-    #     pass
+        b = bytes([esp.Message_ID & 0xFF, (esp.Message_ID >> 8) & 0xFF, esp.Message_Length & 0xFF, (esp.Message_Length >> 8) & 0xFF])
     else:
-        serdev.write(value & 0xFF)
-    #
+        b = bytes([value & 0xFF])
+    #print('b=', b)
+    serdev.write(b)
     serdev.flush()
     serdev.timeout = 0
 
-write_at(serdev, ESP_ID, 0)
-#write_at(serdev, Get_ESP_ID, ord('?'))
+# write_at(Get_ESP_ID, ord('?'))
+# write_at(ESP_ID, 0)
+# write_at(Get_ESP_ID, ord('?'))
 
 esp.Message_ID = 1
 t1 = time.time()
@@ -71,31 +72,34 @@ try:
                         mess = ''
                         mess += '<<<       '
                         #mess += '<BEGIN'
-                        #mess += '>' + AT_PATTERN + AirRate + str(AirRate.to_bytes(2, 'little'))[2:-1] + '<'
-                        #mess += '>' + AT_PATTERN + AirRate + str(AirRate & 0xFF) + str((AirRate >> 8) & 0xFF) + '<'
-                        #mess += '>' + AT_PATTERN + AirRate + AirRate + '<'
-                        #mess += '>' + AT_PATTERN + AirRate + '?' + '<'
+                        #mess += '>' + AT_PATTERN + Lora_AirRate + str(Lora_AirRate.to_bytes(2, 'little'))[2:-1] + '<'
+                        #mess += '>' + AT_PATTERN + Lora_AirRate + str(Lora_AirRate & 0xFF) + str((Lora_AirRate >> 8) & 0xFF) + '<'
+                        #mess += '>' + AT_PATTERN + Lora_AirRate + Lora_AirRate + '<'
+                        #mess += '>' + AT_PATTERN + Lora_AirRate + '?' + '<'
                         mess += ' #%7d ' % (esp.Message_ID)
                         mess += '- %7.3f ' % (te-ts)
                         mess += '- %7.3f ' % (t2-t1)
                         mess += '1234567890' * 15  # 150 # 45 # 46 # 240 #
                         mess += ' #%7d ' % (esp.Message_ID)
-                        #mess += '>' + AT_PATTERN + AirRate + '?' + '<'
+                        #mess += '>' + AT_PATTERN + Lora_AirRate + '?' + '<'
                         #mess += 'END>'
                         mess += '       >>>'
 
                         esp.Message_Length=len(mess)
                         message = ''
-                        message += AT_PATTERN + Message_Begin_End + 'B'
-                        message += to_at(Message_ID_Length, None)
+                        # message += to_at(ESP_ID, 0)
+                        # message += to_at(Get_ESP_ID, ord('?'))
+
+                        # message += AT_PATTERN + Message_Begin_End + 'B'
+                        # message += to_at(Message_ID_Length, None)
                         message += mess
-                        message += AT_PATTERN + Message_Begin_End + 'E'
+                        # message += AT_PATTERN + Message_Begin_End + 'E'
 
                         message_ = str_to_bytes(message)
 
                         MESSAGE_LEN = len(message_)
                         print('\nSending #%d %d %d\n%s' % (esp.Message_ID, MESSAGE_LEN, len(mess), message))
-                        # print('\nSending #%d %d %d\n%s' % (esp.Message_ID, MESSAGE_LEN, len(mess), message_))
+                        #print('\nSending #%d %d %d\n%s' % (esp.Message_ID, MESSAGE_LEN, len(mess), message_))
 
                         ts = time.time()
                         state = SENDING
@@ -107,17 +111,18 @@ try:
                         if sended >= MESSAGE_LEN:
                             print('Sended #%d %d' % (esp.Message_ID, sended))
                             te = time.time()
-                            if esp.Message_ID < 1:
-                            #if True:
+                            #if esp.Message_ID < 10:
+                            if True:
                                 sended = 0
                                 state = IDLE
                             esp.Message_ID += 1
                             t1 = t2
 
-                            # write_at(serdev, AirRate, AirRate)
+                            # write_at(Lora_AirRate, Lora_AirRate)
 
         msg = None
         # if serdev.in_waiting:
+        #     print('serdev.in_waiting=', serdev.in_waiting)
         #     msg = serdev.read_all()
         if msg:
             message_flow += msg

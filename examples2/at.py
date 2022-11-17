@@ -1,7 +1,7 @@
 AT_PATTERN = "@@@@@" # шаблон
 AT_PATTERN_LEN = len(AT_PATTERN) # довжина шаблону
 AT_COMMAND_LEN = 1
-AT_VALUE_LEN = 5 # довжина значення команди може бути 1, 2 або 5
+AT_VALUE_LEN = 5 # довжина значення команди може бути 1, 4 або 5
 AT_MAX_SIZE = AT_PATTERN_LEN + AT_COMMAND_LEN + AT_VALUE_LEN
 
 Tangenta1 = 'T'  # next byte is '0'-unpressed, '1'-pressed
@@ -29,11 +29,11 @@ Message_Begin_End = 'S'
 Message_Data = 'D'
 
 AIR_RATE = { '0.3k':'0', '1.2k':'1', '2.4k':'2', '4.8k':'3', '9.6k':'4', '19.2k':'5' }
-AirRate = 'A'
+Lora_AirRate = 'A'
 
-Power = 'P'
+Lora_Power = 'P'
 
-Mode = 'O'
+Lora_Mode = 'O'
 
 LoRa_uart_event = 'E'  # next byte is (event.type+'0')
 Android_uart_event = 'e'  # next byte is (event.type+'0')
@@ -60,8 +60,29 @@ def AT_VALUE_SIZE(at_cmd):
     else:
         return 1
 
+def AT_SIZE(at_cmd):
+    return AT_PATTERN_LEN + AT_COMMAND_LEN + AT_VALUE_SIZE(at_cmd)
+
 def IS_AT_TO_RESIEVER(at_cmd):
     return (at_cmd == Message_Data) or (at_cmd == Message_ID_Length) or (at_cmd == Message_Begin_End)
+
+def str_to_bytes(message):
+    # b = []
+    # for x in message:
+    #     b.append(ord(x))  # ascii code of character
+
+    # b = [None] * len(message)
+    # for i in range(len(message)):
+    #     b[i] = ord(message[i])  # ascii code of character
+    # return b
+
+    return [ord(x) for x in message]
+
+def bytes_to_str(message):
+    msg = ''
+    for i in range(len(message)):
+        msg += chr(message[i])
+    return msg
 
 class esp:
     ID = 0
@@ -79,28 +100,28 @@ def get_at(message):
                 at_pos += AT_PATTERN_LEN
                 at_bin = message[at_pos:at_pos + 1]
                 # at = str(at_bin)
-                at = at_bin.decode()
+                #at = at_bin.decode()
+                at = bytes_to_str(at_bin)
+
                 at_size = AT_VALUE_SIZE(at)
                 print("at_size=", at_size, at_pos, message)
                 if len(message) >= (at_pos + at_size):
                     at_value_bin = message[at_pos + 1:at_pos + 1 + at_size]
 
                     if at == ESP_ID:
-                        at_value = at_value_bin.to_int()
+                        at_value = int.from_bytes(at_value_bin, "little", signed=False)
                     elif at == Message_ID_Length:
                         at_value_bin = message[at_pos + 1:at_pos + 1 + 2]
-                        esp.Message_ID = at_value_bin.decode()
+                        esp.Message_ID = int.from_bytes(at_value_bin, "little", signed=False)
 
                         at_value_bin = message[at_pos + 1 + 2:at_pos + 1 + 2 + 2]
-                        esp.Message_Length = at_value_bin.decode()
-
+                        esp.Message_Length = int.from_bytes(at_value_bin, "little", signed=False)
                     elif at == Message_Data:
                         at_value_bin = message[at_pos + 1:at_pos + 1 + 2]
-                        esp.Message_ID = at_value_bin.decode()
+                        esp.Message_ID = int.from_bytes(at_value_bin, "little", signed=False)
 
                         at_value_bin = message[at_pos + 1 + 2:at_pos + 1 + 2 + 2]
-                        esp.Message_Ofset = at_value_bin.decode()
-
+                        esp.Message_Ofset = int.from_bytes(at_value_bin, "little", signed=False)
                     else:
                         at_value = at_value_bin.decode()
 
@@ -120,21 +141,3 @@ def get_at(message):
                     message = message[at_pos + 1 + at_size:]
                     #print('message', message)
     return at, at_value, message
-
-def str_to_bytes(message):
-    # b = []
-    # for x in message:
-    #     b.append(ord(x))  # ascii code of character
-
-    # b = [None] * len(message)
-    # for i in range(len(message)):
-    #     b[i] = ord(message[i])  # ascii code of character
-    # return b
-
-    return [ord(x) for x in message]
-
-def bytes_to_str(message):
-    msg = ''
-    for i in range(len(message)):
-        msg += chr(message[i])
-    return msg
