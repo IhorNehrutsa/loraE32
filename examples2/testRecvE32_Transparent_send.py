@@ -37,7 +37,7 @@ e32.getConfig()
 e32.configMessage(from_address, from_channel)
 print()
 
-# e32.sendMessage("TEST")
+e32.sendMessage(b"TEST")
 
 err = 0
 message_flow = b''
@@ -50,7 +50,7 @@ try:
 
         msg = e32.receive_message()
         if msg:
-            if 0:
+            if 1:
                 msg = bytes_to_str(msg)
                 #print(msg)
                 print(msg, end=' ')

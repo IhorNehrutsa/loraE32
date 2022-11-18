@@ -109,6 +109,7 @@ try:
                         sended += n
                         # print('Sended=', sended, 'n=', n)
                         if sended >= MESSAGE_LEN:
+                            serdev.flush()
                             print('Sended #%d %d' % (esp.Message_ID, sended))
                             te = time.time()
                             #if esp.Message_ID < 10:
@@ -133,7 +134,7 @@ try:
         #     print('message_flow=', at, at_value, message_flow)
 
         if msg:
-            if 0:
+            if 1:
                 #print(msg)
                 msg = bytes_to_str(msg)
                 print('msg=', msg)
@@ -152,13 +153,13 @@ try:
 
                     message_in = bytes_to_str(message_in)
 
+                    print()
                     if len(message_in) != MESSAGE_LEN:
                         print('len(message_in) != MESSAGE_LEN', len(message_in), MESSAGE_LEN)
                         err += 1
-                    print()
-                    print('Received %d - err %d'% (len(message_in), err), False if len(message_in) != MESSAGE_LEN else '')
+                    print('Received %d - err %d'% (len(message_in), err))
                     print(message_in)
-                    print('Received %d - err %d'% (len(message_in), err), False if len(message_in) != MESSAGE_LEN else '')
+                    print('Received %d - err %d'% (len(message_in), err))
                     message_flow = message_flow[end+4+1:]
                     #print(len(message_flow), message_flow)
                     state = IDLE
