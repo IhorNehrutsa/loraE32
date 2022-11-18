@@ -90,6 +90,7 @@
 
 import json
 
+from at import *
 
 class ebyteE32:
     ''' class to interface an ESP32 via serial commands to the EBYTE E32 Series LoRa modules '''
@@ -212,10 +213,12 @@ class ebyteE32:
             payload = json.dumps(payload)     # convert payload to JSON string
 
         # encode message
-        try:
-            msg = payload.encode('UTF-8')
-        except:
-            msg = payload
+        msg = payload
+        # msg = str_to_bytes(payload)
+        # try:
+        #     msg = payload.encode('UTF-8')
+        # except:
+        #     msg = payload
 
         # debug
         if self.debug:
@@ -225,7 +228,7 @@ class ebyteE32:
         while sended < len(msg):
             while not self.getAUX() or self.out_waiting():
                 pass
-            self.sleep_ms(75)  # 150 # 100 # 75 # 70
+            self.sleep_ms(150)  # 150 # 100 # 75 # 70
             n = self.serdev.write(msg[sended:sended + self.PACKET_SIZE])
             if n > 0:
                 self.flush()
@@ -233,6 +236,7 @@ class ebyteE32:
                 while self.getAUX() and (self.time_ms() - t < 50):
                     pass
                 sended += n
+        return sended
 
 #         while sended < len(msg):
 #             while not self.getAUX() or self.out_waiting():

@@ -6,7 +6,7 @@
 # receiver(s) - address 0001 - channel 02
 ###########################################
 
-MSG_LEN = 1570
+MSG_LEN = 1560
 
 import time
 
@@ -37,7 +37,7 @@ e32.getConfig()
 e32.configMessage(from_address, from_channel)
 print()
 
-e32.sendMessage("TEST")
+# e32.sendMessage("TEST")
 
 err = 0
 message_flow = b''
@@ -51,38 +51,33 @@ try:
         msg = e32.receive_message()
         if msg:
             if 0:
-                #print(msg, end='')
                 msg = bytes_to_str(msg)
                 #print(msg)
                 print(msg, end=' ')
-                #print('' , len(msg), msg, end='')
-                #print('\n' , len(msg), msg)
             else:
                 #print('msg=', msg)
-                #print(len(msg), msg)
-                #print(message_flow)
                 message_flow +=msg
                 begin = message_flow.find(b'<<<')
                 end = message_flow.rfind(b'>>>')
+                e = 3
 #                 begin = message_flow.find((AT_PATTERN + "SB").encode())
 #                 end = message_flow.rfind((AT_PATTERN + "SE").encode())
+#                 e = AT_PATTERN_LEN + 2
                 if (begin >= 0) and (end > 0) and (begin < end):
-                    message = message_flow[begin:end + AT_PATTERN_LEN + 2]
-                    msg = bytes_to_str(msg)
+                    message = message_flow[begin:end + e]
+                    #msg = bytes_to_str(msg)
                     if len(message) != MSG_LEN:
                         err += 1
                     print()
                     print('Received - address %s - channel %d - len %d - err %d'% (from_address, from_channel, len(message), err), False if len(message) != MSG_LEN else '')
                     #print(message)
-                    message_flow = message_flow[end + AT_PATTERN_LEN + 2:]
-                    #print(len(message_flow), message_flow)
+                    message_flow = message_flow[end + e:]
+                    #print('message_flow=', message_flow)
 
-                    if 1:#len(message) == MSG_LEN:
-                        print('Sending  - address %s - channel %d - len %d\n%s'%(to_address, to_channel, len(message), message))
-                        #e32.sendMessage(to_address, to_channel, message, useChecksum=False)
-                        e32.sendMessage(message)
-                        print('Sended.')
-                        message = ''
+                    print('Sending  - address %s - channel %d - len %d\n%s'%(to_address, to_channel, len(message), message))
+                    sended = e32.sendMessage(message)
+                    print('Sended' , sended, len(message), sended == len(message))
+                    message = ''
 
 finally:
     e32.stop()

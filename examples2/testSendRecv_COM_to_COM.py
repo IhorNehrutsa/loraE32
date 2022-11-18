@@ -12,7 +12,7 @@ RECEIVING = 2
 
 state = IDLE
 
-serdev = serial.Serial('COM17', baudrate=9600, timeout=0)  # UART_ANDROID_BAUD_RATE
+serdev = serial.Serial('COM17', baudrate=115200, timeout=0)  # UART_ANDROID_BAUD_RATE
 #serdev = serial.Serial('COM17', baudrate=115200)  # UART_ANDROID_BAUD_RATE
 print(serdev)
 
@@ -79,7 +79,7 @@ try:
                         mess += ' #%7d ' % (esp.Message_ID)
                         mess += '- %7.3f ' % (te-ts)
                         mess += '- %7.3f ' % (t2-t1)
-                        mess += '1234567890' * 15  # 150 # 45 # 46 # 240 #
+                        mess += '1234567890' * 150 # 2500  # 150 # 45 # 46 # 240 #
                         mess += ' #%7d ' % (esp.Message_ID)
                         #mess += '>' + AT_PATTERN + Lora_AirRate + '?' + '<'
                         #mess += 'END>'
@@ -113,7 +113,7 @@ try:
                             te = time.time()
                             #if esp.Message_ID < 10:
                             if True:
-                                sended = 0
+                                sended -= MESSAGE_LEN
                                 state = IDLE
                             esp.Message_ID += 1
                             t1 = t2
@@ -121,19 +121,19 @@ try:
                             # write_at(Lora_AirRate, Lora_AirRate)
 
         msg = None
-        # if serdev.in_waiting:
-        #     print('serdev.in_waiting=', serdev.in_waiting)
-        #     msg = serdev.read_all()
+        if serdev.in_waiting:
+            msg = serdev.read_all()
+
         if msg:
             message_flow += msg
-            print('msg=', msg)
-            print('message_flow=', message_flow)
+        #     print('msg=', msg)
+        #     print('message_flow=', message_flow)
 
-            at, at_value, message_flow = get_at(message_flow)
-            print('message_flow=', at, at_value, message_flow)
+        #     at, at_value, message_flow = get_at(message_flow)
+        #     print('message_flow=', at, at_value, message_flow)
 
         if msg:
-            if 1:
+            if 0:
                 #print(msg)
                 msg = bytes_to_str(msg)
                 print('msg=', msg)
@@ -141,10 +141,10 @@ try:
                 #print('' , len(msg), msg, end='')
                 #print('\n' , len(msg), msg)
             else:
-                # begin = message_flow.find(b'<BEGIN')
-                # end = message_flow.rfind(b'END>')
-                begin = message_flow.find((AT_PATTERN + "SB").encode())
-                end = message_flow.rfind((AT_PATTERN + "SE").encode())
+                begin = message_flow.find(b'<<<')
+                end = message_flow.rfind(b'>>>')
+                # begin = message_flow.find((AT_PATTERN + "SB").encode())
+                # end = message_flow.rfind((AT_PATTERN + "SE").encode())
                 if begin >= 0:
                     state = RECEIVING
                 if (begin >= 0) and (end > 0) and (begin < end):
@@ -153,11 +153,12 @@ try:
                     message_in = bytes_to_str(message_in)
 
                     if len(message_in) != MESSAGE_LEN:
+                        print('len(message_in) != MESSAGE_LEN', len(message_in), MESSAGE_LEN)
                         err += 1
                     print()
                     print('Received %d - err %d'% (len(message_in), err), False if len(message_in) != MESSAGE_LEN else '')
                     print(message_in)
-                    print('Received')
+                    print('Received %d - err %d'% (len(message_in), err), False if len(message_in) != MESSAGE_LEN else '')
                     message_flow = message_flow[end+4+1:]
                     #print(len(message_flow), message_flow)
                     state = IDLE
