@@ -95,7 +95,7 @@ from at import *
 class ebyteE32:
     ''' class to interface an ESP32 via serial commands to the EBYTE E32 Series LoRa modules '''
 
-    PACKET_SIZE = 512 # 58 #
+    PACKET_SIZE = 58 # 512 #
 
     # UART parity strings
     PARSTR = { '8N1':'00', '8O1':'01', '8E1':'10' }

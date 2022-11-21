@@ -99,14 +99,10 @@ def get_at(message):
             if len(message) >= (at_pos + AT_PATTERN_LEN + 1):
                 at_pos += AT_PATTERN_LEN
                 at_bin = message[at_pos:at_pos + 1]
-                # at = str(at_bin)
-                #at = at_bin.decode()
                 at = bytes_to_str(at_bin)
-
-                at_size = AT_VALUE_SIZE(at)
-                print("at_size=", at_size, at_pos, message)
-                if len(message) >= (at_pos + at_size):
-                    at_value_bin = message[at_pos + 1:at_pos + 1 + at_size]
+                at_value_size = AT_VALUE_SIZE(at)
+                if len(message) >= (at_pos + 1 + at_value_size):
+                    at_value_bin = message[at_pos + 1:at_pos + 1 + at_value_size]
 
                     if at == ESP_ID:
                         at_value = int.from_bytes(at_value_bin, "little", signed=False)
@@ -125,7 +121,7 @@ def get_at(message):
                     else:
                         at_value = at_value_bin.decode()
 
-                    print('\n@@@@@ AT:', at, at_value)  # , '|', at_bin, at_value_bin)
+                    #print('\n@@@@@ AT:', at, at_value)  # , '|', at_bin, at_value_bin)
                     if at == data_to_LoRa_bufer:
                         data_to_LoRa_state = at_value
                         if at_value not in ('0', '1', '2', '3', '4', '5'):
@@ -137,7 +133,7 @@ def get_at(message):
                         #print('message', message)
                         pass
 
-                    #print('message', message)
-                    message = message[at_pos + 1 + at_size:]
-                    #print('message', message)
+                    #print('1message=', message)
+                    message = message[at_pos + 1 + at_value_size:]
+                    #print('2message=', message)
     return at, at_value, message

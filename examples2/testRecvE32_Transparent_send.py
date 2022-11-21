@@ -6,7 +6,7 @@
 # receiver(s) - address 0001 - channel 02
 ###########################################
 
-MSG_LEN = 1560
+MSG_LEN = 12560
 
 import time
 
@@ -41,6 +41,7 @@ e32.sendMessage(b"TEST")
 
 err = 0
 message_flow = b''
+send_counter = 0
 try:
     while True:
         #e32.sendMessage('message')
@@ -50,7 +51,7 @@ try:
 
         msg = e32.receive_message()
         if msg:
-            if 1:
+            if 0:
                 msg = bytes_to_str(msg)
                 #print(msg)
                 print(msg, end=' ')
@@ -76,8 +77,14 @@ try:
 
                     print('Sending  - address %s - channel %d - len %d\n%s'%(to_address, to_channel, len(message), message))
                     sended = e32.sendMessage(message)
-                    print('Sended' , sended, len(message), sended == len(message))
+                    send_counter += 1
+                    print('Sended N', send_counter, sended, len(message), sended == len(message))
                     message = ''
 
 finally:
-    e32.stop()
+    try:
+        e32.serdev.reset_output_buffer()
+        e32.serdev.close()
+        print('serdev.close()')
+    except:
+        pass

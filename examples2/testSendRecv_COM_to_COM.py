@@ -49,8 +49,8 @@ def write_at(at:str, value:int):
 
 esp.Message_ID = 1
 t1 = time.time()
-ts = time.time()
-te = time.time() - PERIOD_S
+t_send_begin = time.time()
+t_send_end = time.time() - PERIOD_S
 MESSAGE_LEN = 0
 
 err = 0
@@ -64,8 +64,8 @@ try:
         t2 = time.time()
         #if False:
         if state != RECEIVING:
-            #if t2 - te > te - ts + 5:
-            if t2 - te > PERIOD_S:
+            #if t2 - t_send_end > t_send_end - t_send_begin + 5:
+            if t2 - t_send_end > PERIOD_S:
             #if True:
                 if data_to_LoRa_state < data_bufer_3_4:
                     if sended == 0:
@@ -77,9 +77,9 @@ try:
                         #mess += '>' + AT_PATTERN + Lora_AirRate + Lora_AirRate + '<'
                         #mess += '>' + AT_PATTERN + Lora_AirRate + '?' + '<'
                         mess += ' #%7d ' % (esp.Message_ID)
-                        mess += '- %7.3f ' % (te-ts)
-                        mess += '- %7.3f ' % (t2-t1)
-                        mess += '1234567890' * 150 # 2500  # 150 # 45 # 46 # 240 #
+                        mess += '- %7.3f ' % (t_send_end - t_send_begin)
+                        mess += '- %7.3f ' % (t2 - t1)
+                        mess += '1234567890' * 1250  # 150 # 45 # 46 # 240 #
                         mess += ' #%7d ' % (esp.Message_ID)
                         #mess += '>' + AT_PATTERN + Lora_AirRate + '?' + '<'
                         #mess += 'END>'
@@ -101,7 +101,7 @@ try:
                         print('\nSending #%d %d %d\n%s' % (esp.Message_ID, MESSAGE_LEN, len(mess), message))
                         #print('\nSending #%d %d %d\n%s' % (esp.Message_ID, MESSAGE_LEN, len(mess), message_))
 
-                        ts = time.time()
+                        t_send_begin = time.time()
                         state = SENDING
 
                     n = serdev.write(message_[sended:sended + PACKET_SIZE])
@@ -109,9 +109,9 @@ try:
                         sended += n
                         # print('Sended=', sended, 'n=', n)
                         if sended >= MESSAGE_LEN:
-                            serdev.flush()
+                            #serdev.flush()
                             print('Sended #%d %d' % (esp.Message_ID, sended))
-                            te = time.time()
+                            t_send_end = time.time()
                             #if esp.Message_ID < 10:
                             if True:
                                 sended -= MESSAGE_LEN
@@ -130,11 +130,15 @@ try:
         #     print('msg=', msg)
         #     print('message_flow=', message_flow)
 
-        #     at, at_value, message_flow = get_at(message_flow)
-        #     print('message_flow=', at, at_value, message_flow)
+            at, at_value, message_flow = get_at(message_flow)
+            if at:
+                # print('at, at_value, message_flow=', at, at_value, message_flow)
+                print('at, at_value', at, at_value)
+                if at == data_to_LoRa_bufer:
+                    data_to_LoRa_state = at_value
 
         if msg:
-            if 1:
+            if 0:
                 #print(msg)
                 msg = bytes_to_str(msg)
                 print('msg=', msg)
@@ -168,6 +172,8 @@ try:
 
 finally:
     try:
+        serdev.reset_output_buffer()
         serdev.close()
+        print('serdev.close()')
     except:
         pass
